@@ -63,7 +63,11 @@ class Banner extends Model
 
     public function getPhotoFullUrlAttribute(): string|null|array
     {
+        // Accept values with or without leading 'banner/' prefix
         $value = $this->photo;
+        if (is_string($value) && str_starts_with($value, 'banner/')) {
+            $value = substr($value, strlen('banner/'));
+        }
         if (count($this->storage) > 0) {
             $storage = $this->storage->where('key', 'photo')->first();
         }

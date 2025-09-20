@@ -23,6 +23,7 @@ use App\Http\Controllers\Web\ShopViewController;
 use App\Http\Controllers\Web\UserProfileController;
 use App\Http\Controllers\Web\UserWalletController;
 use App\Http\Controllers\Web\WebController;
+use App\Http\Controllers\Web\CollectionController;
 use Illuminate\Support\Facades\Route;
 use App\Enums\ViewPaths\Web\Review;
 use App\Enums\ViewPaths\Web\UserLoyalty;
@@ -132,6 +133,9 @@ Route::group(['namespace' => 'Web', 'middleware' => ['maintenance_mode', 'guestC
         Route::get('contacts', 'getContactView')->name('contacts');
         Route::get('helpTopic', 'getHelpTopicView')->name('helpTopic');
     });
+
+    // Collections (Home Sections) public page
+    Route::get('collection/{slug}', [CollectionController::class, 'index'])->name('collection');
 
     Route::controller(ProductDetailsController::class)->group(function () {
         Route::get('/product/{slug}', 'index')->name('product');

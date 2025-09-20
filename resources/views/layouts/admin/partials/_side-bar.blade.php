@@ -299,6 +299,15 @@
                         </li>
                     </ul>
                 </li>
+                <li>
+                    <a class="nav-link {{ Request::is('admin/pages-and-media/homepage/sections*') ? 'active' : '' }}"
+                       href="{{ route('admin.pages-and-media.homepage.sections.index') }}" title="{{ translate('homepage_sections') }}">
+                        <i class="fi fi-sr-layout-fluid"></i>
+                        <span class="aside-mini-hidden-element flex-grow-1 d-flex justify-content-between align-items-center text-truncate max-w-180">
+                            {{ translate('homepage_sections') }}
+                        </span>
+                    </a>
+                </li>
 
                 <li>
                     <a class="nav-link {{ Request::is('admin/attribute*') ? 'active' : '' }}"

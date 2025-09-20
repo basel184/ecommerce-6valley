@@ -26,6 +26,7 @@ use App\Http\Controllers\RestAPI\v1\SellerController;
 use App\Http\Controllers\RestAPI\v1\ShippingMethodController;
 use App\Http\Controllers\RestAPI\v1\UserLoyaltyController;
 use App\Http\Controllers\RestAPI\v1\UserWalletController;
+use App\Http\Controllers\RestAPI\v1\HomeSectionController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Customer\PaymentController;
 
@@ -175,6 +176,8 @@ Route::group(['namespace' => 'RestAPI\v1', 'prefix' => 'v1', 'middleware' => ['a
                 Route::get('featured', 'getFeaturedProductsList');
                 Route::get('top-rated', 'getTopRatedProducts');
                 Route::any('search', 'get_searched_products');
+                // Fallback: allow calling /api/v1/products?search=... to perform search as well
+                Route::any('/', 'get_searched_products');
                 Route::post('filter', 'getProductsFilter');
                 Route::any('suggestion-product', 'get_suggestion_product');
                 Route::get('details/{slug}', 'getProductDetails');
@@ -370,6 +373,16 @@ Route::group(['namespace' => 'RestAPI\v1', 'prefix' => 'v1', 'middleware' => ['a
     Route::group(['prefix' => 'banners'], function () {
         Route::controller(BannerController::class)->group(function () {
             Route::get('/', 'getBannerList');
+        });
+    });
+
+    // Home Sections (Collections) for SPA Homepage
+    Route::group(['prefix' => 'home-sections'], function () {
+        Route::controller(HomeSectionController::class)->group(function () {
+            Route::get('/', 'list');
+            Route::get('{slug}', 'show');
+            Route::get('{slug}/products', 'productsBySlug');
+            Route::get('{slug}/facets', 'facetsBySlug');
         });
     });
 

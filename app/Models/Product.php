@@ -363,7 +363,15 @@ class Product extends Model
         if (strpos(url()->current(), '/admin') || strpos(url()->current(), '/vendor') || strpos(url()->current(), '/seller')) {
             return $name;
         }
-        return $this->translations[0]->value ?? $name;
+        // Prefer translation value for key 'name' when available
+        $translated = null;
+        foreach ($this->translations as $t) {
+            if (($t->key ?? null) === 'name' && isset($t->value)) {
+                $translated = $t->value;
+                break;
+            }
+        }
+        return $translated ?? $name;
     }
 
     public function getDetailsAttribute($detail): string|null
@@ -371,7 +379,15 @@ class Product extends Model
         if (strpos(url()->current(), '/admin') || strpos(url()->current(), '/vendor') || strpos(url()->current(), '/seller')) {
             return $detail;
         }
-        return $this->translations[1]->value ?? $detail;
+        // Prefer translation value for key 'description' when available
+        $translated = null;
+        foreach ($this->translations as $t) {
+            if (($t->key ?? null) === 'description' && isset($t->value)) {
+                $translated = $t->value;
+                break;
+            }
+        }
+        return $translated ?? $detail;
     }
 
     public function getThumbnailFullUrlAttribute(): string|null|array
@@ -441,11 +457,37 @@ class Product extends Model
 
         static::addGlobalScope('translate', function (Builder $builder) {
             $builder->with(['translations' => function ($query) {
-                if (strpos(url()->current(), '/api')) {
-                    return $query->where('locale', App::getLocale());
-                } else {
-                    return $query->where('locale', getDefaultLanguage());
+                // Resolve allowed locale values: language code plus any configured country codes mapping to it
+                $currentLocale = strpos(url()->current(), '/api') ? App::getLocale() : getDefaultLanguage();
+                $allowedLocales = [$currentLocale];
+                try {
+                    $languages = getWebConfig('language');
+                    if (is_array($languages)) {
+                        foreach ($languages as $ln) {
+                            if (!empty($ln['code'])) {
+                                $langCode = function_exists('getLanguageCode') ? getLanguageCode($ln['code']) : null;
+                                if ($langCode && strtolower($langCode) === strtolower($currentLocale)) {
+                                    $allowedLocales[] = strtolower($ln['code']);
+                                }
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // noop, fallback to currentLocale only
                 }
+                // If no additional locales discovered, add common country codes for the language
+                if (count($allowedLocales) === 1) {
+                    if (strtolower($currentLocale) === 'ar') {
+                        $allowedLocales = array_merge($allowedLocales, ['sa','ae','eg','jo','kw','lb','ly','ma','om','qa','sy','tn','ye','bh','iq']);
+                    } elseif (strtolower($currentLocale) === 'en') {
+                        $allowedLocales = array_merge($allowedLocales, ['us','gb','au','ca','nz','sg','ie','za','zw','tt','jm','my','bz']);
+                    }
+                }
+                                $allowedLocales = array_unique(array_map('strtolower', $allowedLocales));
+                                return $query->where(function($q) use ($allowedLocales, $currentLocale) {
+                                        $q->whereIn(DB::raw('LOWER(locale)'), $allowedLocales)
+                                            ->orWhereRaw('LOWER(locale) like ?', [strtolower($currentLocale).'%' ]);
+                                });
             }, 'reviews' => function ($query) {
                 $query->whereNull('delivery_man_id');
             }]);

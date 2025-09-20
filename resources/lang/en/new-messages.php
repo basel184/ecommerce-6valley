@@ -1672,4 +1672,7 @@ return [
 	"logged out successfully" => "Logged out successfully",
 	"No license verification required" => "No license verification required",
 	"Default_Language_Changed" => "Default Language Changed",
+	"We_are_sorry_server_is_not_responding" => "We are sorry server is not responding",
+	"Try_after_sometime" => "Try after sometime",
+	"Cart key or ID is required!" => "Cart key or ID is required!",
 ];

@@ -44,6 +44,67 @@
         @include('theme-views.partials._best-deal-just-for-you')
 
         @include('theme-views.partials._home-categories')
+        @if(isset($homeSections) && $homeSections->count() > 0)
+            @foreach($homeSections as $section)
+                @php($limit = $section->show_limit ?? 8)
+                @if(($section->type ?? 'products') === 'products')
+                    @php($sectionProducts = $section->products?->sortBy(fn($p) => $p->pivot->sort_order ?? 0)->take($limit))
+                    @if($sectionProducts && $sectionProducts->count() > 0)
+                        <section class="">
+                            <div class="container">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h3 class="mb-0 text-capitalize">{{ $section->title }}</h3>
+                                    <a class="text-capitalize" href="{{ route('collection', $section->slug) }}">{{ translate('view_all') }}</a>
+                                </div>
+                                <div class="row g-3">
+                                    @foreach($sectionProducts as $product)
+                                        <div class="col-6 col-md-4 col-lg-3">
+                                            @include('theme-views.partials._product-small-card', ['product' => $product])
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </section>
+                    @endif
+                @elseif(($section->type ?? 'products') === 'banners')
+                    @php($banners = $section->banners?->take($limit))
+                    @if($banners && $banners->count() > 0)
+                        <section class="">
+                            <div class="container">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h3 class="mb-0 text-capitalize">{{ $section->title }}</h3>
+                                </div>
+                                @if(($section->banner_layout ?? 'slider') === 'slider')
+                                    <div class="swiper" data-swiper-loop="false" data-swiper-margin="16" data-swiper-autoplay="true" data-swiper-pagination-el=".swiper-pagination-{{ $section->id }}">
+                                        <div class="swiper-wrapper">
+                                            @foreach($banners as $bn)
+                                                <div class="swiper-slide">
+                                                    <a href="{{ $bn->url }}" class="d-block">
+                                                        <img src="{{ getStorageImages(path: $bn->photo_full_url, type:'banner') }}" alt="" class="img-fluid rounded w-100"/>
+                                                    </a>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                        <div class="swiper-pagination swiper-pagination-{{ $section->id }}"></div>
+                                    </div>
+                                @else
+                                    @php($cols = $section->banner_layout === 'grid_3' ? 4 : ($section->banner_layout === 'grid_2' ? 6 : 12))
+                                    <div class="row g-3">
+                                        @foreach($banners as $bn)
+                                            <div class="col-12 col-md-{{ $cols }}">
+                                                <a href="{{ $bn->url }}" class="d-block">
+                                                    <img src="{{ getStorageImages(path: $bn->photo_full_url, type:'banner') }}" alt="" class="img-fluid rounded w-100"/>
+                                                </a>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        </section>
+                    @endif
+                @endif
+            @endforeach
+        @endif
         @if (!empty($bannerTypeMainSectionBanner))
         <section class="">
             <div class="container">

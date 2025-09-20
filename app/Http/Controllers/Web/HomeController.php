@@ -66,6 +66,10 @@ class HomeController extends Controller
         $topVendorsList = ProductManager::getPriorityWiseTopVendorQuery($this->cacheHomePageTopVendorsList());
         $bannerTypeFooterBanner = $this->cacheBannerTable(bannerType: 'Footer Banner', dataLimit: 10);
         $clearanceSaleProducts = $this->cacheHomePageClearanceSaleProducts();
+        $homeSections = \App\Models\HomeSection::with([
+            'products' => function($q){ $q->active(); },
+            'banners'
+        ])->where('status', 1)->orderBy('sort_order')->get();
 
         $categories = CategoryManager::getCategoriesWithCountingAndPriorityWiseSorting();
         $userId = Auth::guard('customer')->user() ? Auth::guard('customer')->id() : 0;
@@ -96,7 +100,7 @@ class HomeController extends Controller
             compact(
                 'flashDeal', 'featuredProductsList', 'topRatedProducts', 'bestSellProduct', 'latestProductsList', 'categories', 'brands',
                 'dealOfTheDay', 'topVendorsList', 'homeCategories', 'bannerTypeMainBanner', 'bannerTypeMainSectionBanner',
-                'current_date', 'recommendedProduct', 'bannerTypeFooterBanner', 'newArrivalProducts', 'clearanceSaleProducts'
+                'current_date', 'recommendedProduct', 'bannerTypeFooterBanner', 'newArrivalProducts', 'clearanceSaleProducts', 'homeSections'
             )
         );
     }
@@ -109,6 +113,10 @@ class HomeController extends Controller
         $randomSingleProduct = $this->cacheHomePageRandomSingleProductItem();
         $topVendorsList = ProductManager::getPriorityWiseTopVendorQuery(query: $this->cacheHomePageTopVendorsList());
         $clearanceSaleProducts = $this->cacheHomePageClearanceSaleProducts();
+        $homeSections = \App\Models\HomeSection::with([
+            'products' => function($q){ $q->active(); },
+            'banners'
+        ])->where('status', 1)->orderBy('sort_order')->get();
 
         $categories = CategoryManager::getCategoriesWithCountingAndPriorityWiseSorting(dataLimit: 11);
         $userId = Auth::guard('customer')->user() ? Auth::guard('customer')->id() : 0;
@@ -329,7 +337,7 @@ class HomeController extends Controller
                 'flashDeal', 'topRatedProducts', 'bestSellProduct', 'latestProductsList', 'featuredProductsList', 'dealOfTheDay', 'topVendorsList',
                 'homeCategories', 'bannerTypeMainBanner', 'bannerTypeFooterBanner', 'randomSingleProduct', 'decimal_point_settings', 'justForYouProducts', 'moreVendors',
                 'final_category', 'category_slider', 'order_again', 'bannerTypeSidebarBanner', 'bannerTypeMainSectionBanner', 'random_coupon', 'bannerTypeTopSideBanner',
-                'categories', 'topVendorsListSectionShowingStatus', 'clearanceSaleProducts', 'recommendedProduct'
+                'categories', 'topVendorsListSectionShowingStatus', 'clearanceSaleProducts', 'recommendedProduct', 'homeSections'
             )
         );
     }

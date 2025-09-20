@@ -92,7 +92,7 @@
 
         @include('web-views.partials._clearance-sale-products', ['clearanceSaleProducts' => $clearanceSaleProducts])
 
-    @if (isset($bannerTypeMainSectionBanner))
+        @if (isset($bannerTypeMainSectionBanner))
             <div class="container rtl pt-4 px-0 px-md-3">
                 <a href="{{$bannerTypeMainSectionBanner->url}}" target="_blank"
                     class="cursor-pointer d-block">
@@ -108,6 +108,71 @@
         @endif
 
         @include('web-views.partials._deal-of-the-day', ['decimal_point_settings' => $decimalPointSettings])
+
+        @if(isset($homeSections) && $homeSections->count() > 0)
+            @foreach($homeSections as $section)
+                @php($limit = $section->show_limit ?? 8)
+                @if(($section->type ?? 'products') === 'products')
+                    @php($sectionProducts = $section->products?->sortBy(fn($p) => $p->pivot->sort_order ?? 0)->take($limit))
+                    @if($sectionProducts && $sectionProducts->count() > 0)
+                        <section class="new-arrival-section">
+                            <div class="container rtl mt-4">
+                                <div class="section-header d-flex justify-content-between align-items-center">
+                                    <h2 class="arrival-title d-block mb-1">
+                                        <div class="text-capitalize">{{ $section->title }}</div>
+                                    </h2>
+                                    <div class="__mr-2px">
+                                        <a class="text-capitalize view-all-text web-text-primary" href="{{ route('collection', $section->slug) }}">
+                                            {{ translate('view_all') }}
+                                            <i class="czi-arrow-{{Session::get('direction') === 'rtl' ? 'left mr-1 ml-n1 mt-1 float-left' : 'right ml-1 mr-n1'}}"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="container rtl mb-3 overflow-hidden">
+                                <div class="py-2">
+                                    <div class="new_arrival_product">
+                                        <div class="carousel-wrap">
+                                            <div class="owl-carousel owl-theme new-arrivals-product">
+                                                @foreach($sectionProducts as $product)
+                                                    @include('web-views.partials._product-card-2',[ 'product'=>$product, 'decimal_point_settings'=>$decimalPointSettings ])
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    @endif
+                @elseif(($section->type ?? 'products') === 'banners')
+                    @php($banners = $section->banners?->take($limit))
+                    @if($banners && $banners->count() > 0)
+                        <div class="container rtl pt-4 px-0 px-md-3">
+                            @if(($section->banner_layout ?? 'slider') === 'slider')
+                                <div class="promotional-banner-slider owl-carousel owl-theme">
+                                    @foreach($banners as $bn)
+                                        <a href="{{ $bn->url }}" class="d-block" target="_blank">
+                                            <img class="footer_banner_img __inline-63" alt="" src="{{ getStorageImages(path:$bn->photo_full_url, type: 'banner') }}">
+                                        </a>
+                                    @endforeach
+                                </div>
+                            @else
+                                @php($cols = $section->banner_layout === 'grid_3' ? 4 : ($section->banner_layout === 'grid_2' ? 6 : 12))
+                                <div class="row g-3">
+                                    @foreach($banners as $bn)
+                                        <div class="col-md-{{ $cols }}">
+                                            <a href="{{ $bn->url }}" class="d-block" target="_blank">
+                                                <img class="footer_banner_img __inline-63" alt="" src="{{ getStorageImages(path:$bn->photo_full_url, type: 'banner') }}">
+                                            </a>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+                @endif
+            @endforeach
+        @endif
 
         <section class="new-arrival-section">
 

@@ -1135,6 +1135,22 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin']],
                 Route::post('features-section/submit', 'update')->name('features-section.submit');
                 Route::post('features-section/icon-remove', 'delete')->name('features-section.icon-remove');
             });
+
+            // Home Sections Management
+            Route::group(['prefix' => 'homepage', 'as' => 'homepage.'], function () {
+                Route::controller(\App\Http\Controllers\Admin\Homepage\HomeSectionController::class)->group(function () {
+                    Route::get('sections', 'index')->name('sections.index');
+                    Route::get('sections/create', 'create')->name('sections.create');
+                    Route::post('sections', 'store')->name('sections.store');
+                    Route::get('sections/{id}/edit', 'edit')->name('sections.edit');
+                    Route::put('sections/{id}', 'update')->name('sections.update');
+                    Route::delete('sections/{id}', 'destroy')->name('sections.destroy');
+                    Route::post('sections/{id}/add-product', 'addProduct')->name('sections.add-product');
+                    Route::delete('sections/{id}/remove-product/{productId}', 'removeProduct')->name('sections.remove-product');
+                    Route::delete('sections/{id}/remove-category/{categoryId}', 'removeCategory')->name('sections.remove-category');
+                    Route::delete('sections/{id}/remove-brand/{brandId}', 'removeBrand')->name('sections.remove-brand');
+                });
+            });
         });
     });
 
