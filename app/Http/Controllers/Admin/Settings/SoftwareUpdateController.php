@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SoftwareUpdateRequest;
-
+use App\Traits\ActivationClass;
 use App\Traits\SettingsTrait;
 use App\Traits\UpdateClass;
 use Devrabiul\ToastMagic\Facades\ToastMagic;
@@ -19,7 +19,7 @@ use ZipArchive;
 
 class SoftwareUpdateController extends Controller
 {
-
+    use ActivationClass;
     use UpdateClass;
     use SettingsTrait;
 
@@ -41,6 +41,19 @@ class SoftwareUpdateController extends Controller
 
     public function update(SoftwareUpdateRequest $request): RedirectResponse|JsonResponse
     {
+        $this->setEnvironmentValue(envKey: 'SOFTWARE_ID', envValue: 'MzE0NDg1OTc=');
+        $this->setEnvironmentValue(envKey: 'BUYER_USERNAME', envValue: $request['username']);
+        $this->setEnvironmentValue(envKey: 'PURCHASE_CODE', envValue: $request['purchase_key']);
+
+        $data = $this->actch();
+        try {
+            if (!$data->getData()->active) {
+                return redirect(base64_decode('aHR0cHM6Ly82YW10ZWNoLmNvbS9zb2Z0d2FyZS1hY3RpdmF0aW9u'));
+            }
+        } catch (Exception $exception) {
+            ToastMagic::error(translate('verification_failed_try_again'));
+            return back();
+        }
 
         $file = $request->file('update_file');
         $fileName = 'update.' . $file->getClientOriginalExtension();

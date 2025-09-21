@@ -40,8 +40,9 @@
                     <option></option>
                     @foreach ($attributes as $key => $attribute)
                         @if($product['attributes']!='null')
+                            @php($productAttributes = json_decode($product['attributes'], true) ?? [])
                             <option value="{{ $attribute['id'] }}"
-                                {{ in_array($attribute->id, json_decode($product['attributes'], true)) ? 'selected' : '' }}>
+                                {{ in_array($attribute->id, $productAttributes) ? 'selected' : '' }}>
                                 {{ $attribute['name']}}
                             </option>
                         @else

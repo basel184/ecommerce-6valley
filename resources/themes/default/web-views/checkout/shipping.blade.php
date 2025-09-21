@@ -298,11 +298,9 @@
                                                         </div>
                                                         <div class="col-sm-6">
                                                             <div class="form-group">
-                                                                <label>{{ translate('phone')}}
-                                                                    <span class="text-danger">*</span>
-                                                                </label>
+                                                                <label>{{ translate('phone')}}</label>
                                                                 <input type="text" class="form-control phone-input-with-country-picker-2"
-                                                                    id="billing_phone" {{ $billingAddresses->count()==0 ? 'required' : '' }}>
+                                                                    id="billing_phone">
                                                                 <input type="hidden" class="country-picker-phone-number-2 w-50" name="billing_phone" readonly>
                                                             </div>
                                                         </div>

@@ -365,7 +365,7 @@ class ProductManager
 
     public static function search_products($request, $name, $category = 'all', $limit = 10, $offset = 1): array
     {
-        $key = explode(' ', $name);;
+    $key = explode(' ', $name);
         $user = Helpers::getCustomerInformation($request);
 
         $authorIds = Author::where('name', 'like', "%{$name}%")->pluck('id')->toArray();
@@ -374,28 +374,46 @@ class ProductManager
         $publishingHouseIds = PublishingHouse::where('name', 'like', "%{$name}%")->pluck('id')->toArray();
         $publishingHouseProductIds = DigitalProductPublishingHouse::whereIn('publishing_house_id', $publishingHouseIds)->pluck('product_id')->toArray();
 
-        $productListData = Product::active()->with(['rating', 'tags', 'clearanceSale' => function ($query) {
+        $productListData = Product::active()->with(['rating', 'tags', 'brand', 'clearanceSale' => function ($query) {
             return $query->active();
         }])
-            ->where(function ($q) use ($key) {
+            ->where(function ($q) use ($key, $authorProductIds, $publishingHouseProductIds, $name) {
+                // البحث باستخدام الاسم الكامل أولاً
+                $q->where('name', 'like', "%{$name}%")
+                  ->orWhere('details', 'like', "%{$name}%")
+                  ->orWhere('code', 'like', "%{$name}%");
+                
+                // البحث في البراند
+                $q->orWhereHas('brand', function ($query) use ($name) {
+                    $query->where('name', 'like', "%{$name}%");
+                });
+                
+                // البحث في الكلمات المفردة
                 foreach ($key as $value) {
-                    $q->orWhere('name', 'like', "%{$value}%")
-                        ->orWhereHas('tags', function ($query) use ($key) {
-                            $query->where(function ($q) use ($key) {
-                                foreach ($key as $value) {
-                                    $q->where('tag', 'like', "%{$value}%");
-                                }
-                            });
-                        });
+                    if (strlen(trim($value)) > 1) { // تجاهل الكلمات القصيرة جداً
+                        $q->orWhere('name', 'like', "%{$value}%")
+                          ->orWhere('details', 'like', "%{$value}%")
+                          ->orWhere('code', 'like', "%{$value}%")
+                          ->orWhereHas('tags', function ($query) use ($value) {
+                              $query->where('tag', 'like', "%{$value}%");
+                          })
+                          ->orWhereHas('brand', function ($query) use ($value) {
+                              $query->where('name', 'like', "%{$value}%");
+                          });
+                    }
+                }
+                
+                // إضافة البحث في المؤلفين ودور النشر
+                if (!empty($authorProductIds)) {
+                    $q->orWhereIn('id', $authorProductIds);
+                }
+                if (!empty($publishingHouseProductIds)) {
+                    $q->orWhereIn('id', $publishingHouseProductIds);
                 }
             })
             ->withCount(['wishList' => function ($query) use ($user) {
                 $query->where('customer_id', $user != 'offline' ? $user->id : '0');
-            }])->when(!empty($authorProductIds), function ($query) use ($authorProductIds) {
-                $query->whereIn('id', $authorProductIds);
-            })->when(!empty($publishingHouseProductIds), function ($query) use ($publishingHouseProductIds) {
-                $query->whereIn('id', $publishingHouseProductIds);
-            });
+            }]);
 
         if (isset($category) && $category != 'all') {
             $categoryWiseProduct = $productListData->where(['category_id' => $category])
@@ -412,6 +430,54 @@ class ProductManager
             'offset' => (int)$offset,
             'products' => $productListData->items()
         ];
+    }
+
+    /**
+     * Return fuzzy-matched product IDs for a query using general similarity (no hardcoded words).
+     */
+    public static function getFuzzyProductIds(string $name, int $candidateLimit = 500, int $maxReturn = 200): array
+    {
+        $norm = self::normalizeSearchText($name);
+        if ($norm === '') return [];
+        $tokens = preg_split('/\s+/u', $norm) ?: [];
+        $first = $tokens[0] ?? $norm;
+
+        $candidates = Product::select('id','name')
+            ->active()
+            ->with(['tags:tag','brand:id,name'])
+            ->where('name', 'like', "%{$first}%")
+            ->orWhereHas('tags', function ($q) use ($first) {
+                $q->where('tag', 'like', "%{$first}%");
+            })
+            ->orWhereHas('brand', function ($q) use ($first) {
+                $q->where('name', 'like', "%{$first}%");
+            })
+            ->limit($candidateLimit)
+            ->get();
+
+        $scored = [];
+        foreach ($candidates as $p) {
+            $hay = trim(($p->name ?? ''));
+            if ($p->brand && $p->brand->name) { $hay .= ' ' . $p->brand->name; }
+            if ($p->relationLoaded('tags') && $p->tags) {
+                foreach ($p->tags as $tg) { $hay .= ' ' . ($tg->tag ?? ''); }
+            }
+            $hayNorm = mb_strtoupper(self::normalizeSearchText($hay));
+            $needle = mb_strtoupper($norm);
+            $percent = 0.0;
+            similar_text($needle, $hayNorm, $percent);
+            foreach ($tokens as $t) {
+                if ($t !== '' && str_contains($hayNorm, mb_strtoupper($t))) { $percent += 5; break; }
+            }
+            $scored[] = ['id' => $p->id, 'score' => $percent];
+        }
+        usort($scored, function($a,$b){ return $b['score'] <=> $a['score']; });
+        $ids = [];
+        foreach ($scored as $row) {
+            $ids[] = $row['id'];
+            if (count($ids) >= $maxReturn) break;
+        }
+        return $ids;
     }
 
     public static function suggestion_products($name, $limit = 10, $offset = 1)
@@ -439,6 +505,76 @@ class ProductManager
         ];
     }
 
+    /**
+     * Fuzzy search suggestions for misspelled queries (basic, PHP-level scoring).
+     * - Pulls a limited candidate set using LIKE on first token and tags/brand
+     * - Scores candidates using similar_text percentage after light normalization
+     * - Returns top N unique products
+     */
+    public static function getFuzzySearchSuggestions(string $name, int $limit = 10): array
+    {
+        $original = trim($name);
+        if ($original === '') { return ['products' => []]; }
+
+        $norm = self::normalizeSearchText($original);
+        $tokens = preg_split('/\s+/u', $norm) ?: [];
+        $first = $tokens[0] ?? $norm;
+
+        // Build candidate pool (cap to avoid heavy queries)
+        $candidates = Product::select('id','name','slug')
+            ->active()
+            ->with(['tags','brand'])
+            ->where('name', 'like', "%{$first}%")
+            ->orWhereHas('tags', function ($q) use ($first) {
+                $q->where('tag', 'like', "%{$first}%");
+            })
+            ->orWhereHas('brand', function ($q) use ($first) {
+                $q->where('name', 'like', "%{$first}%");
+            })
+            ->limit(200)
+            ->get();
+
+        $scored = [];
+        foreach ($candidates as $p) {
+            $pname = self::normalizeSearchText($p->name ?? '');
+            $percent = 0.0;
+            // similar_text handles multibyte reasonably for simple cases
+            similar_text(mb_strtoupper($norm), mb_strtoupper($pname), $percent);
+            // Add small bonus if any token appears
+            foreach ($tokens as $t) {
+                if ($t !== '' && str_contains($pname, $t)) { $percent += 5; break; }
+            }
+            $scored[] = ['product' => $p, 'score' => $percent];
+        }
+
+        usort($scored, function($a,$b){ return $b['score'] <=> $a['score']; });
+
+        $unique = [];
+        $seen = [];
+        foreach ($scored as $row) {
+            $pid = $row['product']->id;
+            if (isset($seen[$pid])) continue;
+            $seen[$pid] = true;
+            $unique[] = $row['product'];
+            if (count($unique) >= $limit) break;
+        }
+
+        return ['products' => $unique];
+    }
+
+    /**
+     * Normalize search text: lowercase, trim, remove Arabic diacritics and Tatweel.
+     */
+    public static function normalizeSearchText(string $text): string
+    {
+        $text = trim($text);
+        // Remove Arabic Tatweel and diacritics
+        $text = preg_replace('/[\x{0640}\x{064B}-\x{065F}\x{0670}\x{06D6}-\x{06ED}]/u', '', $text);
+        // Collapse multiple spaces
+        $text = preg_replace('/\s+/u', ' ', $text);
+        return $text;
+    }
+
     public static function getSearchProductsForWeb($name, $category = 'all', $limit = 10, $offset = 1): array
     {
         $authorIds = Author::where('name', 'like', "%{$name}%")->pluck('id')->toArray();
@@ -447,15 +583,29 @@ class ProductManager
         $publishingHouseIds = PublishingHouse::where('name', 'like', "%{$name}%")->pluck('id')->toArray();
         $publishingHouseProductIds = DigitalProductPublishingHouse::whereIn('publishing_house_id', $publishingHouseIds)->pluck('product_id')->toArray();
 
-        $productListData = Product::active()->with(['rating', 'tags'])->where(function ($q) use ($name) {
-            $q->orWhere('name', 'like', "%{$name}%")
-                ->orWhereHas('tags', function ($query) use ($name) {
-                    $query->where('tag', 'like', "%{$name}%");
-                });
-        })->when(!empty($authorProductIds), function ($query) use ($authorProductIds) {
-            $query->whereIn('id', $authorProductIds);
-        })->when(!empty($publishingHouseProductIds), function ($query) use ($publishingHouseProductIds) {
-            $query->whereIn('id', $publishingHouseProductIds);
+        $productListData = Product::active()->with(['rating', 'tags', 'brand'])->where(function ($q) use ($name, $authorProductIds, $publishingHouseProductIds) {
+            // البحث الأساسي في الاسم والتفاصيل والكود
+            $q->where('name', 'like', "%{$name}%")
+              ->orWhere('details', 'like', "%{$name}%")
+              ->orWhere('code', 'like', "%{$name}%");
+            
+            // البحث في البراند
+            $q->orWhereHas('brand', function ($query) use ($name) {
+                $query->where('name', 'like', "%{$name}%");
+            });
+            
+            // البحث في التاجز
+            $q->orWhereHas('tags', function ($query) use ($name) {
+                $query->where('tag', 'like', "%{$name}%");
+            });
+            
+            // إضافة البحث في المؤلفين ودور النشر
+            if (!empty($authorProductIds)) {
+                $q->orWhereIn('id', $authorProductIds);
+            }
+            if (!empty($publishingHouseProductIds)) {
+                $q->orWhereIn('id', $publishingHouseProductIds);
+            }
         });
 
         if (isset($category) && $category != 'all') {
@@ -478,14 +628,19 @@ class ProductManager
     public static function translated_product_search($name, $category = 'all', $limit = 10, $offset = 1): array
     {
         $name = base64_decode($name);
-        $product_ids = Translation::where('translationable_type', 'App\Models\Product')
-            ->where('key', 'name')
+        $product_ids = Translation::where('translationable_type', 'App\\Models\\Product')
+            ->whereIn('key', ['name','details','slug'])
             ->where('value', 'like', "%{$name}%")
             ->pluck('translationable_id');
 
-        $productListData = Product::with(['tags', 'clearanceSale' => function ($query) {
+        // البحث أيضاً في تفاصيل المنتج المترجمة
+    $description_ids = collect(); // now covered by whereIn above
+
+    $all_product_ids = $product_ids->unique();
+
+    $productListData = Product::with(['tags', 'brand', 'clearanceSale' => function ($query) {
             return $query->active();
-        }])->whereIn('id', $product_ids);
+        }])->whereIn('id', $all_product_ids);
         if ($category != 'all') {
             $categoryWiseProduct = $productListData->where(['category_id' => $category])
                 ->orWhere(['sub_category_id' => $category])
@@ -510,8 +665,16 @@ class ProductManager
             ->where('value', 'like', "%{$name}%")
             ->pluck('translationable_id');
 
-        $productListData = Product::with(['tags', 'translations'])
-            ->whereIn('id', $translationIds);
+        // البحث أيضاً في تفاصيل المنتج المترجمة
+        $descriptionIds = Translation::where('translationable_type', 'App\Models\Product')
+            ->where('key', 'details')
+            ->where('value', 'like', "%{$name}%")
+            ->pluck('translationable_id');
+
+        $allTranslationIds = $translationIds->merge($descriptionIds)->unique();
+
+        $productListData = Product::with(['tags', 'brand', 'translations'])
+            ->whereIn('id', $allTranslationIds);
 
         if ($category !== 'all') {
             $productListData->whereJsonContains('category_ids', [['id' => $category]]);
@@ -1004,6 +1167,10 @@ class ProductManager
                 $query = $query->orderBy('name', 'asc');
             } elseif ($featuredProductSortBy['sort_by'] == 'z_to_a') {
                 $query = $query->orderBy('name', 'desc');
+            } elseif ($featuredProductSortBy['sort_by'] == 'low_high_price') {
+                $query = $query->orderBy('unit_price', 'asc');
+            } elseif ($featuredProductSortBy['sort_by'] == 'high_low_price') {
+                $query = $query->orderBy('unit_price', 'desc');
             }
 
             $query = $query->where(['featured' => 1])->get();
@@ -1071,6 +1238,10 @@ class ProductManager
                 $query = $query->orderBy('name', 'asc');
             } elseif ($topRatedProductSortBy['sort_by'] == 'z_to_a') {
                 $query = $query->orderBy('name', 'desc');
+            } elseif ($topRatedProductSortBy['sort_by'] == 'low_high_price') {
+                $query = $query->orderBy('unit_price', 'asc');
+            } elseif ($topRatedProductSortBy['sort_by'] == 'high_low_price') {
+                $query = $query->orderBy('unit_price', 'desc');
             }
 
             $query = $query->get();
@@ -1155,6 +1326,10 @@ class ProductManager
                 $query = $query->orderBy('name', 'asc');
             } elseif ($bestSellingProductSortBy['sort_by'] == 'z_to_a') {
                 $query = $query->orderBy('name', 'desc');
+            } elseif ($bestSellingProductSortBy['sort_by'] == 'low_high_price') {
+                $query = $query->orderBy('unit_price', 'asc');
+            } elseif ($bestSellingProductSortBy['sort_by'] == 'high_low_price') {
+                $query = $query->orderBy('unit_price', 'desc');
             }
 
             $query = $query->get();
@@ -1232,6 +1407,10 @@ class ProductManager
                 $query = $query->orderBy('name', 'asc');
             } elseif ($newArrivalProductSortBy['sort_by'] == 'z_to_a') {
                 $query = $query->orderBy('name', 'desc');
+            } elseif ($newArrivalProductSortBy['sort_by'] == 'low_high_price') {
+                $query = $query->orderBy('unit_price', 'asc');
+            } elseif ($newArrivalProductSortBy['sort_by'] == 'high_low_price') {
+                $query = $query->orderBy('unit_price', 'desc');
             }
 
             $query = $query->get();
@@ -1298,6 +1477,10 @@ class ProductManager
                 $query = $query->orderBy('name', 'asc');
             } elseif ($categoryWiseProductSortBy['sort_by'] == 'z_to_a') {
                 $query = $query->orderBy('name', 'desc');
+            } elseif ($categoryWiseProductSortBy['sort_by'] == 'low_high_price') {
+                $query = $query->orderBy('unit_price', 'asc');
+            } elseif ($categoryWiseProductSortBy['sort_by'] == 'high_low_price') {
+                $query = $query->orderBy('unit_price', 'desc');
             }
 
             $query = $query->get();
@@ -1406,6 +1589,10 @@ class ProductManager
                 $query = $query->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE);
             } elseif ($featureDealSortBy['sort_by'] == 'z_to_a') {
                 $query = $query->sortByDesc('name', SORT_NATURAL | SORT_FLAG_CASE);
+            } elseif ($featureDealSortBy['sort_by'] == 'low_high_price') {
+                $query = $query->sortBy('unit_price');
+            } elseif ($featureDealSortBy['sort_by'] == 'high_low_price') {
+                $query = $query->sortByDesc('unit_price');
             }
 
             if ($featureDealSortBy['out_of_stock_product'] == 'desc') {
@@ -1574,6 +1761,10 @@ class ProductManager
                 $query = $query->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE);
             } elseif ($flashDealSortBy['sort_by'] == 'z_to_a') {
                 $query = $query->sortByDesc('name', SORT_NATURAL | SORT_FLAG_CASE);
+            } elseif ($flashDealSortBy['sort_by'] == 'low_high_price') {
+                $query = $query->sortBy('unit_price');
+            } elseif ($flashDealSortBy['sort_by'] == 'high_low_price') {
+                $query = $query->sortByDesc('unit_price');
             }
 
             if ($flashDealSortBy['out_of_stock_product'] == 'desc') {
@@ -1724,6 +1915,10 @@ class ProductManager
                 $query = $query->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE);
             } elseif ($vendorProductListSortBy['sort_by'] == 'z_to_a') {
                 $query = $query->sortByDesc('name', SORT_NATURAL | SORT_FLAG_CASE);
+            } elseif ($vendorProductListSortBy['sort_by'] == 'low_high_price') {
+                $query = $query->sortBy('unit_price');
+            } elseif ($vendorProductListSortBy['sort_by'] == 'high_low_price') {
+                $query = $query->sortByDesc('unit_price');
             }
 
             if ($vendorProductListSortBy['out_of_stock_product'] == 'desc') {
@@ -2189,33 +2384,98 @@ class ProductManager
                 $searchName = str_ireplace(['\'', '"', ',', ';', '<', '>', '?'], ' ', preg_replace('/\s\s+/', ' ', $request['name']));
                 return $query->orderByRaw("CASE WHEN name LIKE '%{$searchName}%' THEN 1 ELSE 2 END, LOCATE('{$searchName}', name), name");
             })
-            ->when(($request['data_from'] == 'search' && !empty($request['search'])) || !empty($request['name']) || !empty($request['product_name']), function ($query) use ($request) {
+            ->when(($request['data_from'] == 'search' && (!empty($request['search']) || !empty($request['name']))) || !empty($request['name']) || !empty($request['product_name']), function ($query) use ($request) {
                 $searchKey = $request->search ? $request->search : ($request['product_name'] ?? $request['name']);
-                $productsIDArray = [];
-                $searchProducts = ProductManager::search_products($request, $searchKey);
-                if ($searchProducts['products'] == null || getDefaultLanguage() != 'en') {
-                    $searchProducts = ProductManager::translated_product_search(base64_encode($searchKey));
-                }
-                if ($searchProducts['products']) {
+                // Buckets to preserve priority: direct > translated > fuzzy
+                $directIds = [];
+                $translatedIds = [];
+                $fuzzyIds = [];
+
+                // 1) Direct matches (broad query util)
+                $searchProducts = ProductManager::search_products($request, $searchKey, 'all', 100000, 1);
+                if (!empty($searchProducts['products'])) {
                     foreach ($searchProducts['products'] as $product) {
-                        $productsIDArray[] = $product->id;
+                        $directIds[] = $product->id;
                     }
                 }
 
+                // 2) Translated matches (name/details/slug)
+                try {
+                    $translated = ProductManager::translated_product_search(base64_encode($searchKey), 'all', 100000, 1);
+                    if (!empty($translated['products'])) {
+                        foreach ($translated['products'] as $product) {
+                            $translatedIds[] = $product->id;
+                        }
+                    }
+                } catch (\Throwable $e) { /* ignore */ }
+
+                // 3) Always include fuzzy near-matches (letter-similar/typo tolerant)
+                try {
+                    $fuzzyIds = ProductManager::getFuzzyProductIds($searchKey, 800, 300);
+                } catch (\Throwable $e) { /* ignore */ }
+
+                // Merge by priority and cap to a reasonable max to avoid huge IN lists
+                $priorityIds = array_values(array_unique(array_merge($directIds, $translatedIds, $fuzzyIds)));
+                $priorityIds = array_slice($priorityIds, 0, 2000);
+
                 $searchName = str_ireplace(['\'', '"', ',', ';', '<', '>', '?'], ' ', preg_replace('/\s\s+/', ' ', $searchKey));
-                return $query->when(!empty($productsIDArray), function ($query) use ($productsIDArray) {
-                    return $query->whereIn('id', $productsIDArray);
-                })->when(empty($productsIDArray), function ($query) use ($productsIDArray) {
-                    return $query->whereIn('id', [0]);
-                })->orderByRaw("CASE WHEN name LIKE '%{$searchName}%' THEN 1 ELSE 2 END, LOCATE('{$searchName}', name), name");
+
+                return $query->when(!empty($priorityIds), function ($query) use ($priorityIds, $searchName, $directIds, $translatedIds) {
+                    // Preserve priority: FIELD puts direct first, then translated, then rest; then keep name proximity
+                    $fieldList = implode(',', $priorityIds);
+                    return $query->whereIn('id', $priorityIds)
+                        ->orderByRaw("FIELD(id, {$fieldList})")
+                        ->orderByRaw("CASE WHEN name LIKE '%{$searchName}%' THEN 1 ELSE 2 END, LOCATE('{$searchName}', name), name");
+                })->when(empty($priorityIds), function ($query) use ($searchKey, $searchName) {
+                    // إذا لم توجد نتائج من دالة البحث، ابحث مباشرة في قاعدة البيانات بطريقة شاملة
+                    $key = explode(' ', $searchKey);
+                    return $query->where(function ($q) use ($key, $searchKey) {
+                        // البحث في الاسم الكامل أولاً
+                        $q->where('name', 'like', "%{$searchKey}%")
+                          ->orWhere('details', 'like', "%{$searchKey}%")
+                          ->orWhere('code', 'like', "%{$searchKey}%");
+                        
+                        // البحث في البراند
+                        $q->orWhereHas('brand', function ($query) use ($searchKey) {
+                            $query->where('name', 'like', "%{$searchKey}%");
+                        });
+                        
+                        // البحث في الكلمات المفردة
+                        foreach ($key as $value) {
+                            if (strlen(trim($value)) > 1) {
+                                $q->orWhere('name', 'like', "%{$value}%")
+                                  ->orWhere('details', 'like', "%{$value}%")
+                                  ->orWhere('code', 'like', "%{$value}%")
+                                  ->orWhereHas('tags', function ($query) use ($value) {
+                                      $query->where('tag', 'like', "%{$value}%");
+                                  })
+                                  ->orWhereHas('brand', function ($query) use ($value) {
+                                      $query->where('name', 'like', "%{$value}%");
+                                  });
+                            }
+                        }
+                    })->orderByRaw("CASE WHEN name LIKE '%{$searchName}%' THEN 1 ELSE 2 END, LOCATE('{$searchName}', name), name");
+                });
             })
             ->when(($request['min_price'] != null && $request['min_price'] > 0), function ($query) use ($request) {
+                // Use after-discount price for filtering (not the original unit_price)
                 $minPrice = Convert::usdPaymentModule($request['min_price'] ?? 0, session('currency_code'));
-                return $query->where('unit_price', '>=', $minPrice);
+                $effectivePriceSql = "CASE 
+                    WHEN discount_type = 'percent' AND discount > 0 THEN unit_price - ((unit_price * discount) / 100)
+                    WHEN discount_type = 'flat' AND discount > 0 THEN unit_price - discount
+                    ELSE unit_price
+                END";
+                return $query->whereRaw("($effectivePriceSql) >= ?", [$minPrice]);
             })
             ->when(($request['max_price'] != null), function ($query) use ($request) {
+                // Use after-discount price for filtering (not the original unit_price)
                 $maxPrice = Convert::usdPaymentModule($request['max_price'] ?? 0, session('currency_code'));
-                return $query->where('unit_price', '<=', $maxPrice);
+                $effectivePriceSql = "CASE 
+                    WHEN discount_type = 'percent' AND discount > 0 THEN unit_price - ((unit_price * discount) / 100)
+                    WHEN discount_type = 'flat' AND discount > 0 THEN unit_price - discount
+                    ELSE unit_price
+                END";
+                return $query->whereRaw("($effectivePriceSql) <= ?", [$maxPrice]);
             })
             ->when($request['ratings'] != null, function ($query) use ($request) {
                 return $query->whereHas('rating', function ($query) use ($request) {
@@ -2233,7 +2493,9 @@ class ProductManager
         } elseif ($request['offer_type'] == 'featured_deal') {
             $productListData = ProductManager::getPriorityWiseFeatureDealQuery(query: $productListData, dataLimit: 'all');
         } elseif ($request['data_from'] == 'search') {
-            $productListData = ProductManager::getPriorityWiseSearchedProductQuery(query: $productListData, keyword: $request['name'], dataLimit: 'all', type: 'searched');
+            // Ensure the correct keyword is used for sorting (search > product_name > name)
+            $keyword = $request['search'] ?? ($request['product_name'] ?? $request['name']);
+            $productListData = ProductManager::getPriorityWiseSearchedProductQuery(query: $productListData, keyword: $keyword, dataLimit: 'all', type: 'searched');
         } elseif ($request['offer_type'] == 'clearance_sale') {
             $productListData = ProductManager::getPriorityWiseClearanceSaleProductsQuery(query: $productListData, dataLimit: 'all');
         } elseif ($productUserID && $productAddedBy) {
@@ -2335,6 +2597,10 @@ class ProductManager
                 $query = $query->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE);
             } elseif ($stockClearanceProductSortBy['sort_by'] == 'z_to_a') {
                 $query = $query->sortByDesc('name', SORT_NATURAL | SORT_FLAG_CASE);
+            } elseif ($stockClearanceProductSortBy['sort_by'] == 'low_high_price') {
+                $query = $query->sortBy('unit_price');
+            } elseif ($stockClearanceProductSortBy['sort_by'] == 'high_low_price') {
+                $query = $query->sortByDesc('unit_price');
             }
 
             if ($stockClearanceProductSortBy['sort_by'] == 'clearance_expiration_date') {

@@ -167,6 +167,20 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin']],
 
     Route::get('logout', [LoginController::class, 'logout'])->name('logout');
 
+    // Abandoned Cart Routes
+    Route::group(['prefix' => 'abandoned-carts', 'as' => 'abandoned-carts.'], function () {
+        Route::controller(\App\Http\Controllers\Admin\Order\AbandonedCartController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/{id}', 'show')->name('show');
+            Route::post('send-reminder', 'sendReminder')->name('send-reminder');
+            Route::post('bulk-reminders', 'sendBulkReminders')->name('bulk-reminders');
+            Route::post('restore', 'restoreCart')->name('restore');
+            Route::delete('/{id}', 'destroy')->name('destroy');
+            Route::post('bulk-destroy', 'bulkDestroy')->name('bulk-destroy');
+            Route::get('export', 'export')->name('export');
+        });
+    });
+
     Route::group(['prefix' => 'pos', 'as' => 'pos.', 'middleware' => ['module:pos_management']], function () {
         Route::controller(POSController::class)->group(function () {
             Route::get(POS::INDEX[URI], 'index')->name('index');
@@ -260,6 +274,8 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin']],
             Route::post('status', 'updateStatus')->name('status');
         });
     });
+
+
 
     // Attribute
     Route::group(['prefix' => 'attribute', 'as' => 'attribute.', 'middleware' => ['module:product_management']], function () {
@@ -512,9 +528,9 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin']],
     // Reviews
     Route::group(['prefix' => 'reviews', 'as' => 'reviews.', 'middleware' => ['module:user_section']], function () {
         Route::controller(ReviewController::class)->group(function () {
-            Route::get('list', 'index')->name('list');
+            Route::get('list', 'index')->name('list')->middleware('actch');
             Route::post('status', 'updateStatus')->name('status');
-            Route::get(Review::EXPORT[URI], 'exportList')->name('export');
+            Route::get(Review::EXPORT[URI], 'exportList')->name('export')->middleware('actch');
             Route::get(Review::SEARCH[URI], 'getCustomerList')->name('customer-list-search');
             Route::any(Review::SEARCH_PRODUCT[URI], 'search')->name('search-product');
             Route::post(Review::REVIEW_REPLY[URI], 'addReviewReply')->name('add-review-reply');
@@ -524,11 +540,11 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin']],
     // Coupon
     Route::group(['prefix' => 'coupon', 'as' => 'coupon.', 'middleware' => ['module:promotion_management']], function () {
         Route::controller(CouponController::class)->group(function () {
-            Route::get(Coupon::ADD[URI], 'getAddListView')->name('add');
+            Route::get(Coupon::ADD[URI], 'getAddListView')->name('add')->middleware('actch');
             Route::post(Coupon::ADD[URI], 'add');
-            Route::get(Coupon::EXPORT[URI], 'exportList')->name('export');
+            Route::get(Coupon::EXPORT[URI], 'exportList')->name('export')->middleware('actch');
             Route::get(Coupon::QUICK_VIEW[URI], 'quickView')->name('quick-view-details');
-            Route::get(Coupon::UPDATE[URI] . '/{id}', 'getUpdateView')->name('update');
+            Route::get(Coupon::UPDATE[URI] . '/{id}', 'getUpdateView')->name('update')->middleware('actch');
             Route::post(Coupon::UPDATE[URI] . '/{id}', 'update');
             Route::get(Coupon::STATUS[URI] . '/{id}/{status}', 'updateStatus')->name('status');
             Route::post(Coupon::VENDOR_LIST[URI], 'getVendorList')->name('ajax-get-vendor');
@@ -765,7 +781,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin']],
 
             Route::group(['prefix' => 'currency', 'as' => 'currency.', 'middleware' => ['module:system_settings']], function () {
                 Route::controller(CurrencyController::class)->group(function () {
-                    Route::get('view', 'index')->name('view');
+                    Route::get('view', 'index')->name('view')->middleware('actch');
                     Route::post('store', 'add')->name('store');
                     Route::post('update', 'update')->name('update');
                     Route::post('delete', 'delete')->name('delete');
@@ -822,7 +838,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin']],
         Route::group(['middleware' => ['module:3rd_party_setup']], function () {
             Route::group(['prefix' => 'payment-method', 'as' => 'payment-method.'], function () {
                 Route::controller(PaymentMethodController::class)->group(function () {
-                    Route::get('/', 'index')->name('index');
+                    Route::get('/', 'index')->name('index')->middleware('actch');
                     Route::put('addon-payment-set', 'UpdatePaymentConfig')->name('addon-payment-set');
                     Route::post('payment-status', 'UpdateStatus')->name('payment-status');
                 });
@@ -830,13 +846,13 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin']],
 
             Route::group(['prefix' => 'offline-payment-method', 'as' => 'offline-payment-method.'], function () {
                 Route::controller(OfflinePaymentMethodController::class)->group(function () {
-                    Route::get('index', 'index')->name('index');
-                    Route::get('add', 'getAddView')->name('add');
-                    Route::post('add', 'add');
-                    Route::get('update/{id}', 'getUpdateView')->name('update');
-                    Route::post('update/{id}', 'update');
-                    Route::post('delete', 'delete')->name('delete');
-                    Route::post('update-status', 'updateStatus')->name('update-status');
+                    Route::get('index', 'index')->name('index')->middleware('actch');
+                    Route::get('add', 'getAddView')->name('add')->middleware('actch');
+                    Route::post('add', 'add')->middleware('actch');
+                    Route::get('update/{id}', 'getUpdateView')->name('update')->middleware('actch');
+                    Route::post('update/{id}', 'update')->middleware('actch');
+                    Route::post('delete', 'delete')->name('delete')->middleware('actch');
+                    Route::post('update-status', 'updateStatus')->name('update-status')->middleware('actch');
                 });
             });
 
@@ -912,7 +928,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin']],
         Route::group(['middleware' => ['module:business_settings']], function () {
             Route::group(['prefix' => 'web-config', 'as' => 'web-config.'], function () {
                 Route::controller(BusinessSettingsController::class)->group(function () {
-                    Route::get('/', 'index')->name('index');
+                    Route::get('/', 'index')->name('index')->middleware('actch');
                     Route::post('/', 'updateSettings')->name('update');
                 });
             });
@@ -923,13 +939,13 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin']],
 
 
             Route::controller(WebsiteSetupController::class)->group(function () {
-                Route::get('website-setup', 'getView')->name('website-setup');
+                Route::get('website-setup', 'getView')->name('website-setup')->middleware('actch');
                 Route::post('website-setup', 'updateWebsiteSetup');
             });
 
             Route::group(['prefix' => 'vendor-settings', 'as' => 'vendor-settings.'], function () {
                 Route::controller(VendorSettingsController::class)->group(function () {
-                    Route::get('', 'index')->name('index');
+                    Route::get('', 'index')->name('index')->middleware('actch');
                     Route::post('update-vendor-settings', 'update')->name('update-vendor-settings');
                 });
             });
@@ -962,7 +978,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin']],
             });
 
             Route::controller(BusinessSettingsController::class)->group(function () {
-                Route::get('refund-setup', 'getRefundSetupView')->name('refund-setup');
+                Route::get('refund-setup', 'getRefundSetupView')->name('refund-setup')->middleware('actch');
                 Route::post('refund-setup', 'updateRefundSetup')->name('refund-setup-update');
             });
 
@@ -1135,22 +1151,6 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin']],
                 Route::post('features-section/submit', 'update')->name('features-section.submit');
                 Route::post('features-section/icon-remove', 'delete')->name('features-section.icon-remove');
             });
-
-            // Home Sections Management
-            Route::group(['prefix' => 'homepage', 'as' => 'homepage.'], function () {
-                Route::controller(\App\Http\Controllers\Admin\Homepage\HomeSectionController::class)->group(function () {
-                    Route::get('sections', 'index')->name('sections.index');
-                    Route::get('sections/create', 'create')->name('sections.create');
-                    Route::post('sections', 'store')->name('sections.store');
-                    Route::get('sections/{id}/edit', 'edit')->name('sections.edit');
-                    Route::put('sections/{id}', 'update')->name('sections.update');
-                    Route::delete('sections/{id}', 'destroy')->name('sections.destroy');
-                    Route::post('sections/{id}/add-product', 'addProduct')->name('sections.add-product');
-                    Route::delete('sections/{id}/remove-product/{productId}', 'removeProduct')->name('sections.remove-product');
-                    Route::delete('sections/{id}/remove-category/{categoryId}', 'removeCategory')->name('sections.remove-category');
-                    Route::delete('sections/{id}/remove-brand/{brandId}', 'removeBrand')->name('sections.remove-brand');
-                });
-            });
         });
     });
 
@@ -1181,6 +1181,19 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin']],
                 Route::get('details/{id}', 'getDetailsView')->name('details');
                 Route::post('refund-status-update', 'updateRefundStatus')->name('refund-status-update');
             });
+        });
+    });
+
+    // Reverse Transfer Routes
+    Route::group(['prefix' => 'reverse-transfer', 'as' => 'reverse-transfer.', 'middleware' => ['module:order_management']], function () {
+        Route::controller(\App\Http\Controllers\Admin\Order\ReverseTransferController::class)->group(function () {
+            Route::get('list/{status?}', 'index')->name('index');
+            Route::get('create', 'create')->name('create');
+            Route::post('store', 'store')->name('store');
+            Route::get('show/{id}', 'show')->name('show');
+            Route::post('update-status/{id}', 'updateStatus')->name('update-status');
+            Route::delete('destroy/{id}', 'destroy')->name('destroy');
+            Route::get('export/{status?}', 'export')->name('export');
         });
     });
 

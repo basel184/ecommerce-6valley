@@ -110,6 +110,9 @@ class Order extends Model
         'delivery_type',
         'delivery_service_name',
         'third_party_delivery_tracking_id',
+        'tryoto_shipment_id',
+        'tryoto_response',
+        'tryoto_status',
     ];
     protected $casts = [
         'customer_id' => 'integer',
@@ -159,6 +162,9 @@ class Order extends Model
         'delivery_type' => 'string',
         'delivery_service_name' => 'string',
         'third_party_delivery_tracking_id' => 'string',
+        'tryoto_shipment_id' => 'string',
+        'tryoto_response' => 'array',
+        'tryoto_status' => 'string',
     ];
 
 

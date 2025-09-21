@@ -32,7 +32,11 @@
         </div>
     </div>
 </div>
-
+<style>
+    .d-flex.gap-2.bg-white.p-2.position-fixed.inset-inline-end-0.pointer.shadow.view-guideline-btn.flex-column.align-items-center{
+        display: none !important;
+    }
+</style>
 @include('layouts.admin.partials._header')
 @include('layouts.admin.partials._side-bar')
 

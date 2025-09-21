@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\DB;
 
 /**
  * @property int $id
@@ -65,15 +64,8 @@ class Brand extends Model
         if (strpos(url()->current(), '/admin') || strpos(url()->current(), '/vendor') || strpos(url()->current(), '/seller')) {
             return $name;
         }
-        // Prefer translation value for key 'name' when available
-        $translated = null;
-        foreach ($this->translations as $t) {
-            if (($t->key ?? null) === 'name' && isset($t->value)) {
-                $translated = $t->value;
-                break;
-            }
-        }
-        return $translated ?? $name;
+
+        return $this->translations[0]->value ?? $name;
     }
 
     public function getDefaultNameAttribute(): string|null
@@ -108,34 +100,11 @@ class Brand extends Model
 
         static::addGlobalScope('translate', function (Builder $builder) {
             $builder->with(['translations' => function ($query) {
-                $currentLocale = strpos(url()->current(), '/api') ? App::getLocale() : getDefaultLanguage();
-                $allowedLocales = [$currentLocale];
-                try {
-                    $languages = getWebConfig('language');
-                    if (is_array($languages)) {
-                        foreach ($languages as $ln) {
-                            if (!empty($ln['code'])) {
-                                $langCode = function_exists('getLanguageCode') ? getLanguageCode($ln['code']) : null;
-                                if ($langCode && strtolower($langCode) === strtolower($currentLocale)) {
-                                    $allowedLocales[] = strtolower($ln['code']);
-                                }
-                            }
-                        }
-                    }
-                } catch (\Throwable $e) {
+                if (strpos(url()->current(), '/api')) {
+                    return $query->where('locale', App::getLocale());
+                } else {
+                    return $query->where('locale', getDefaultLanguage());
                 }
-                if (count($allowedLocales) === 1) {
-                    if (strtolower($currentLocale) === 'ar') {
-                        $allowedLocales = array_merge($allowedLocales, ['sa','ae','eg','jo','kw','lb','ly','ma','om','qa','sy','tn','ye','bh','iq']);
-                    } elseif (strtolower($currentLocale) === 'en') {
-                        $allowedLocales = array_merge($allowedLocales, ['us','gb','au','ca','nz','sg','ie','za','zw','tt','jm','my','bz']);
-                    }
-                }
-                                $allowedLocales = array_unique(array_map('strtolower', $allowedLocales));
-                                return $query->where(function($q) use ($allowedLocales, $currentLocale) {
-                                        $q->whereIn(DB::raw('LOWER(locale)'), $allowedLocales)
-                                            ->orWhereRaw('LOWER(locale) like ?', [strtolower($currentLocale).'%' ]);
-                                });
             }]);
         });
     }

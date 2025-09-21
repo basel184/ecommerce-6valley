@@ -194,21 +194,21 @@ Route::group(['middleware' => ['maintenance_mode']], function () {
                 Route::controller(ReviewController::class)->group(function () {
                     Route::get(Review::INDEX[URI], 'index')->name('index');
                     Route::get(Review::UPDATE_STATUS[URI] . '/{id}/{status}', 'updateStatus')->name('update-status');
-                    Route::get(Review::EXPORT[URI], 'exportList')->name('export');
+                    Route::get(Review::EXPORT[URI], 'exportList')->name('export')->middleware('actch')->middleware('actch');
                     Route::post(Review::REVIEW_REPLY[URI], 'addReviewReply')->name('add-review-reply');
                 });
             });
 
             Route::group(['prefix' => 'coupon', 'as' => 'coupon.'], function () {
                 Route::controller(CouponController::class)->group(function () {
-                    Route::get(Coupon::INDEX[URI], 'index')->name('index');
+                    Route::get(Coupon::INDEX[URI], 'index')->name('index')->middleware('actch');
                     Route::post(Coupon::ADD[URI], 'add')->name('add');
-                    Route::get(Coupon::UPDATE[URI] . '/{id}', 'getUpdateView')->name('update');
+                    Route::get(Coupon::UPDATE[URI] . '/{id}', 'getUpdateView')->name('update')->middleware('actch');
                     Route::post(Coupon::UPDATE[URI] . '/{id}', 'update');
                     Route::get(Coupon::UPDATE_STATUS[URI] . '/{id}/{status}', 'updateStatus')->name('update-status');
                     Route::delete(Coupon::DELETE[URI] . '/{id}', 'delete')->name('delete');
                     Route::get(Coupon::QUICK_VIEW[URI], 'getQuickView')->name('quick-view');
-                    Route::get(Coupon::EXPORT[URI], 'exportList')->name('export');
+                    Route::get(Coupon::EXPORT[URI], 'exportList')->name('export')->middleware('actch');
                 });
             });
 

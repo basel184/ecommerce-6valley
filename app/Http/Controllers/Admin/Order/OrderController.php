@@ -34,6 +34,7 @@ use App\Traits\CustomerTrait;
 use App\Traits\FileManagerTrait;
 use App\Traits\PdfGenerator;
 use App\Utils\OrderManager;
+use App\Services\TaqnyatSmsService;
 use Devrabiul\ToastMagic\Facades\ToastMagic;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
@@ -343,6 +344,38 @@ class OrderController extends BaseController
                 event(new OrderStatusEvent(key: 'canceled', type: 'seller', order: $order));
             } elseif ($request['order_status'] == 'delivered') {
                 event(new OrderStatusEvent(key: 'delivered', type: 'seller', order: $order));
+            }
+        }
+
+        // Send SMS via Taqnyat when order is out for delivery
+        if ($request['order_status'] === 'out_for_delivery') {
+            try {
+                $phone = null;
+                if (!$order['is_guest'] && isset($order['customer']) && !empty($order['customer']['phone'])) {
+                    $phone = $order['customer']['phone'];
+                } elseif (!empty($order['shipping_address_data'])) {
+                    // shipping_address_data may be object or array; attempt both
+                    $addr = $order['shipping_address_data'];
+                    if (is_object($addr) && isset($addr->phone)) {
+                        $phone = $addr->phone;
+                    } elseif (is_array($addr) && isset($addr['phone'])) {
+                        $phone = $addr['phone'];
+                    }
+                }
+
+                if ($phone) {
+                    /** @var TaqnyatSmsService $sms */
+                    $sms = app(TaqnyatSmsService::class);
+                    // Build public tracking URL for this order
+                    $trackUrl = route('track-order.result', ['order_id' => $order['id']]);
+                    $message = 'تم تسليم طلبك لشركة الشحن وهو الآن في مسار التوصيل. رقم الطلب: ' . $order['id'] . ' تتبع طلبك: ' . $trackUrl;
+                    $sms->sendSms($phone, $message);
+                }
+            } catch (\Throwable $e) {
+                \Log::error('Failed to send Taqnyat SMS for out_for_delivery', [
+                    'order_id' => $order['id'] ?? null,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

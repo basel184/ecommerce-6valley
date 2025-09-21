@@ -1,0 +1,238 @@
+/* Signature Products Slider Enhancements */
+
+/* Navigation buttons styling */
+.signature-products-slider .owl-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+}
+
+.signature-products-slider .owl-nav button {
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: #333 !important;
+    border: 2px solid #ddd !important;
+    border-radius: 50% !important;
+    width: 50px !important;
+    height: 50px !important;
+    font-size: 18px !important;
+    transition: all 0.3s ease !important;
+    pointer-events: auto;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.signature-products-slider .owl-nav button:hover {
+    background: #007bff !important;
+    color: white !important;
+    border-color: #007bff !important;
+    transform: scale(1.1);
+}
+
+.signature-products-slider .owl-nav .owl-prev {
+    left: -25px;
+}
+
+.signature-products-slider .owl-nav .owl-next {
+    right: -25px;
+}
+
+/* Dots styling */
+.signature-products-slider .owl-dots {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.signature-products-slider .owl-dots .owl-dot {
+    display: inline-block;
+    margin: 0 5px;
+}
+
+.signature-products-slider .owl-dots .owl-dot span {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ddd;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.signature-products-slider .owl-dots .owl-dot.active span {
+    background: #007bff;
+    transform: scale(1.2);
+}
+
+.signature-products-slider .owl-dots .owl-dot:hover span {
+    background: #0056b3;
+}
+
+/* Slider wrapper positioning */
+.signature-products-slider-wrapper {
+    position: relative;
+    overflow: hidden;
+    padding: 0 30px;
+}
+
+/* Auto-play indicator */
+.signature-products-slider .owl-item {
+    transition: transform 0.3s ease;
+}
+
+.signature-products-slider .owl-item:hover {
+    transform: translateY(-5px);
+}
+
+/* Loading state */
+.signature-products-slider-wrapper.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.signature-products-slider-wrapper.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    margin: -20px 0 0 -20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Custom slider controls */
+.signature-slider-controls {
+    position: absolute;
+    top: -60px;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    gap: 10px;
+}
+
+.signature-slider-controls button {
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 25px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.signature-slider-controls button:hover {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+    transform: scale(1.1);
+}
+
+.signature-slider-controls .signature-slider-play-pause {
+    width: 45px;
+    font-size: 12px;
+}
+
+.signature-slider-controls .signature-slider-play-pause.paused {
+    background: #ffc107;
+    border-color: #ffc107;
+    color: #333;
+}
+
+/* Enhanced signature product items */
+.signature-product {
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.signature-product:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Progress bar for auto-play (optional) */
+.signature-slider-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: #007bff;
+    width: 0%;
+    transition: width 4s linear;
+}
+
+.signature-products-slider.owl-carousel .signature-slider-progress {
+    width: 100%;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .signature-products-slider .owl-nav {
+        display: none;
+    }
+    
+    .signature-products-slider-wrapper {
+        padding: 0 15px;
+    }
+    
+    .signature-products-slider .owl-dots {
+        margin-top: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .signature-products-slider-wrapper {
+        padding: 0 10px;
+    }
+    
+    .signature-products-slider .owl-dots .owl-dot span {
+        width: 10px;
+        height: 10px;
+    }
+}
+
+/* RTL Support */
+[dir="rtl"] .signature-products-slider .owl-nav .owl-prev {
+    left: auto;
+    right: -25px;
+}
+
+[dir="rtl"] .signature-products-slider .owl-nav .owl-next {
+    right: auto;
+    left: -25px;
+}
+
+/* Smooth transitions */
+.signature-products-slider .owl-stage-outer {
+    overflow: hidden;
+}
+
+.signature-products-slider .owl-item {
+    backface-visibility: hidden;
+}
+
+/* Auto-play pause indicator */
+.signature-products-slider.paused::before {
+    content: '⏸️';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+}

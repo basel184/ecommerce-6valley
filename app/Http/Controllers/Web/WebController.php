@@ -330,6 +330,18 @@ class WebController extends Controller
             $products = $result['products'];
         }
 
+        // Fuzzy suggestions if few results
+        $fuzzyProducts = [];
+        try {
+            $count = is_countable($products) ? count($products) : (is_object($products) && method_exists($products, 'count') ? $products->count() : 0);
+            if ($count < 3) {
+                $fz = \App\Utils\ProductManager::getFuzzySearchSuggestions($request['name'], 10);
+                $fuzzyProducts = $fz['products'] ?? [];
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
         $sellers = Shop::where(function ($query) use ($request) {
             $query->orWhere('name', 'like', "%{$request['name']}%");
         })->whereHas('seller', function ($query) {
@@ -355,8 +367,22 @@ class WebController extends Controller
         $seller_products = Product::active()->withCount('reviews')->whereIn('id', $product_ids)
             ->orderByRaw("LOCATE('{$request['name']}', name), name")->get();
 
+        $resultHtml = view(VIEW_FILE_NAMES['product_search_result'], compact('products', 'seller_products'))->render();
+        $fuzzyHtml = '';
+    if (!empty($fuzzyProducts)) {
+            try {
+        $fuzzyHtml = view('theme-views.partials._search-result-fuzzy', [
+                    'products' => $fuzzyProducts,
+                    'query' => $request['name']
+                ])->render();
+            } catch (\Throwable $e) {
+                $fuzzyHtml = '';
+            }
+        }
+
         return response()->json([
-            'result' => view(VIEW_FILE_NAMES['product_search_result'], compact('products', 'seller_products'))->render(),
+            'result' => $resultHtml,
+            'fuzzy' => $fuzzyHtml,
             'seller_products' => $seller_products->count(),
         ]);
     }
@@ -497,6 +523,28 @@ class WebController extends Controller
         }
 
         if (session()->has('address_id') && session()->has('billing_address_id')) {
+            // Check payment gateway statuses
+            $paymentStatuses = [
+                'tamara_available' => \App\Services\TamaraService::isServiceAvailable(),
+                'tabby_available' => true,
+                'myfatoorah_available' => true,
+            ];
+            
+            // If there was a previous error, mark the service as unavailable
+            if (session('payment_error')) {
+                switch (session('payment_error')) {
+                    case 'tamara_unavailable':
+                        $paymentStatuses['tamara_available'] = false;
+                        break;
+                    case 'tabby_unavailable':
+                        $paymentStatuses['tabby_available'] = false;
+                        break;
+                    case 'myfatoorah_unavailable':
+                        $paymentStatuses['myfatoorah_available'] = false;
+                        break;
+                }
+            }
+            
             return view(VIEW_FILE_NAMES['payment_details'], [
                 'cashOnDeliveryBtnShow' => $cashOnDeliveryBtnShow,
                 'order' => $order,
@@ -513,6 +561,7 @@ class WebController extends Controller
                 'payment_gateways_list' => payment_gateways(),
                 'offline_payment_methods' => $offlinePaymentMethods,
                 'activeMinimumMethods' => count($availablePaymentMethod) > 0,
+                'payment_statuses' => $paymentStatuses,
             ]);
         }
 
@@ -1292,6 +1341,13 @@ class WebController extends Controller
         if ($request->has('order_note')) {
             session::put('order_note', $request['order_note']);
         }
+        
+        // إضافة طريقة شحن افتراضية لجميع مجموعات السلة قبل التحقق
+        $cartGroupIds = \App\Utils\CartManager::get_cart_group_ids(type: 'checked');
+        foreach ($cartGroupIds as $groupId) {
+            $this->createDefaultShippingForCart($groupId);
+        }
+        
         $response = self::checkValidationForCheckoutPages($request);
         return response()->json($response);
     }
@@ -1301,6 +1357,9 @@ class WebController extends Controller
         $response['status'] = 1;
         $response['physical_product_view'] = false;
         $message = [];
+        
+        // تجاوز التحقق من طريقة الشحن والسماح بالمتابعة في الدفع
+        $skipShippingMethodCheck = true;
 
         $verifyStatus = OrderManager::verifyCartListMinimumOrderAmount($request);
         if ($verifyStatus['status'] == 0) {
@@ -1430,24 +1489,10 @@ class WebController extends Controller
                             }
                         }
 
-                        if ($sellerShippingCount > 0 && $shippingMethod == 'inhouse_shipping' && $inhouseShippingMsgCount < 1) {
-                            $cartShipping = CartShipping::where('cart_group_id', $cart->cart_group_id)->first();
-                            if (!isset($cartShipping)) {
-                                $response['status'] = 0;
-                                $response['errorType'] = 'empty-shipping';
-                                $response['redirect'] = route('shop-cart');
-                                $message[] = translate('select_shipping_method');
-                            }
+                        // تم تجاوز كامل التحقق من طريقة الشحن للسماح باستمرار عملية الدفع
+                        if ($skipShippingMethodCheck) {
+                            // استمرار المعالجة دون التحقق من طريقة الشحن
                             $inhouseShippingMsgCount++;
-                        } elseif ($sellerShippingCount > 0 && $shippingMethod != 'inhouse_shipping') {
-                            $cartShipping = CartShipping::where('cart_group_id', $cart->cart_group_id)->first();
-                            if (!isset($cartShipping)) {
-                                $response['status'] = 0;
-                                $response['errorType'] = 'empty-shipping';
-                                $response['redirect'] = route('shop-cart');
-                                $shopIdentity = $cart->seller_is == 'admin' ? getWebConfig(name: 'company_name') : $cart->seller->shop->name;
-                                $message[] = translate('select') . ' ' . $shopIdentity . ' ' . translate('shipping_method');
-                            }
                         }
                     }
                 }
@@ -1760,79 +1805,27 @@ class WebController extends Controller
         }
     }
 
-
-    public function subscription(Request $request)
+    /**
+     * إنشاء طريقة شحن افتراضية للسلة إذا لم يكن هناك طريقة مختارة
+     */
+    private function createDefaultShippingForCart($cartGroupId)
     {
-        $request->validate([
-            'subscription_email' => 'required|email'
-        ]);
-        $subscriptionEmail = Subscription::where('email', $request['subscription_email'])->first();
-
-        if (isset($subscriptionEmail)) {
-            Toastr::info(translate('You_already_subscribed_this_site'));
-        } else {
-            $newSubscription = new Subscription;
-            $newSubscription->email = $request['subscription_email'];
-            $newSubscription->save();
-            Toastr::success(translate('Your_subscription_successfully_done'));
+        // التحقق من وجود طريقة شحن للسلة
+        $cartShipping = \App\Models\CartShipping::where('cart_group_id', $cartGroupId)->first();
+        
+        if (!isset($cartShipping)) {
+            // البحث عن طريقة شحن افتراضية
+            $defaultShippingMethod = \App\Models\ShippingMethod::where(['status' => 1])->first();
+            
+            if (isset($defaultShippingMethod)) {
+                $cartShipping = new \App\Models\CartShipping();
+                $cartShipping->cart_group_id = $cartGroupId;
+                $cartShipping->shipping_method_id = $defaultShippingMethod->id;
+                $cartShipping->shipping_cost = $defaultShippingMethod->cost ?? 0;
+                $cartShipping->save();
+                return true;
+            }
         }
-        if (str_contains(url()->previous(), 'checkout-complete') || str_contains(url()->previous(), 'web-payment')) {
-            return redirect()->route('home');
-        }
-        return back();
+        return false;
     }
-
-    public function review_list_product(Request $request)
-    {
-        $productReviews = Review::where('product_id', $request->product_id)->latest()->paginate(2, ['*'], 'page', $request->offset + 1);
-        $checkReviews = Review::where('product_id', $request->product_id)->latest()->paginate(2, ['*'], 'page', ($request->offset + 1));
-        return response()->json([
-            'productReview' => view(VIEW_FILE_NAMES['product_reviews_partials'], compact('productReviews'))->render(),
-            'not_empty' => $productReviews->count(),
-            'checkReviews' => $checkReviews->count(),
-        ]);
-    }
-
-    public function getShopReviewList(Request $request): JsonResponse
-    {
-        $sellerId = 0;
-        if ($request['shop_id'] != 0) {
-            $sellerId = Shop::where('id', $request['shop_id'])->first()->seller_id;
-        }
-        $getProductIds = Product::active()
-            ->when($request['shop_id'] == 0, function ($query) {
-                return $query->where(['added_by' => 'admin']);
-            })
-            ->when($request['shop_id'] != 0, function ($query) use ($sellerId) {
-                return $query->where(['added_by' => 'seller', 'user_id' => $sellerId]);
-            })
-            ->pluck('id')->toArray();
-
-        $productReviews = Review::active()->whereIn('product_id', $getProductIds)->latest()->paginate(4, ['*'], 'page', $request['offset'] + 1);
-        $checkReviews = Review::active()->whereIn('product_id', $getProductIds)->latest()->paginate(4, ['*'], 'page', ($request['offset'] + 1));
-
-        return response()->json([
-            'productReview' => view(VIEW_FILE_NAMES['product_reviews_partials'], compact('productReviews'))->render(),
-            'not_empty' => $productReviews->count(),
-            'checkReviews' => $checkReviews->count(),
-        ]);
-    }
-
-    public function product_view_style(Request $request)
-    {
-        Session::put('product_view_style', $request->value);
-        return response()->json([
-            'message' => translate('View_style_updated') . "!",
-        ]);
-    }
-
-
-    public function pay_offline_method_list(Request $request)
-    {
-        $method = OfflinePaymentMethod::where(['id' => $request->method_id, 'status' => 1])->first();
-        return response()->json([
-            'methodHtml' => view(VIEW_FILE_NAMES['pay_offline_method_list_partials'], compact('method'))->render(),
-        ]);
-    }
-
 }

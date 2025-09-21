@@ -49,8 +49,8 @@
                             <span class="text-capitalize">{{translate('my_profile')}}</span>
                         </a>
                     </li>
-                    <li class="{{Request::is('account-oder*') || Request::is('account-order-details*') || Request::is('refund-details*') || Request::is('track-order/order-wise-result-view') ? 'active' :''}}">
-                        <a href="{{route('account-oder')}}">
+                    <li class="{{Request::is('account-orders*') || Request::is('account-order-details*') || Request::is('refund-details*') || Request::is('track-order/order-wise-result-view') ? 'active' :''}}">
+                        <a href="{{route('account-orders')}}">
                             <img width="20" src="{{ theme_asset('assets/img/icons/profile-icon2.png') }}"
                                  class="dark-support" alt="">
                             <span>{{translate('Orders')}}</span>

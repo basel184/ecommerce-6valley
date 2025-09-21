@@ -5,6 +5,97 @@
 @push('css_or_js')
     @include(VIEW_FILE_NAMES['product_seo_meta_content_partials'], ['metaContentData' => $product?->seoInfo, 'productDetails' => $product])
     <link rel="stylesheet" href="{{ theme_asset(path: 'public/assets/front-end/css/product-details.css') }}"/>
+    <style>
+        .bg-light-green {
+            background-color: #e8f5e8;
+            border: 1px solid #d4edda;
+        }
+        .bg-light-blue {
+            background-color: #e3f2fd;
+            border: 1px solid #bbdefb;
+        }
+        .text-light-blue {
+            color: #1976d2;
+        }
+        .text-warning {
+            color: #ff9800 !important;
+        }
+        .text-primary {
+            color: #007bff !important;
+        }
+        .text-dark {
+            color: #343a40 !important;
+        }
+        .text-muted {
+            color: #6c757d !important;
+        }
+        .bg-light {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+        .bg-white {
+            background-color: #ffffff;
+        }
+        .border {
+            border: 1px solid #dee2e6 !important;
+        }
+        .rounded {
+            border-radius: 0.375rem !important;
+        }
+        .p-3 {
+            padding: 1rem !important;
+        }
+        .mt-3 {
+            margin-top: 1rem !important;
+        }
+        .mb-3 {
+            margin-bottom: 1rem !important;
+        }
+        .me-2 {
+            margin-right: 0.5rem !important;
+        }
+        .ms-2 {
+            margin-left: 0.5rem !important;
+        }
+        .gap-3 {
+            gap: 1rem !important;
+        }
+        .d-flex {
+            display: flex !important;
+        }
+        .justify-content-between {
+            justify-content: space-between !important;
+        }
+        .justify-content-center {
+            justify-content: center !important;
+        }
+        .align-items-center {
+            align-items: center !important;
+        }
+        .text-center {
+            text-align: center !important;
+        }
+        .fw-bold {
+            font-weight: 700 !important;
+        }
+        .mb-2 {
+            margin-bottom: 0.5rem !important;
+        }
+        .mb-0 {
+            margin-bottom: 0 !important;
+        }
+        .mt-2 {
+            margin-top: 0.5rem !important;
+        }
+        .h6 {
+            font-size: 1rem;
+            font-weight: 500;
+            line-height: 1.2;
+        }
+        .p {
+            margin-bottom: 0.5rem;
+        }
+    </style>
 @endpush
 
 @section('content')
@@ -197,11 +288,11 @@
                                     <div class="mb-3">
                                         <h3 class="font-weight-normal text-accent d-flex align-items-end gap-2 pt-1">
                                             <span class="discounted-unit-price fs-24 font-bold">
-                                                {{ getProductPriceByType(product: $product, type: 'discounted_unit_price', result: 'string') }}
+                                                {!! webCurrencyConverterWithImage(product: $product, type: 'discounted_unit_price', result: 'string_with_image') !!}
                                             </span>
                                             @if(getProductPriceByType(product: $product, type: 'discount', result: 'value') > 0)
                                                 <del class="product-total-unit-price align-middle text-muted fs-18 font-semibold">
-                                                    {{ webCurrencyConverter(amount: $product->unit_price) }}
+                                                    {!! webCurrencyConverterWithImage(amount: $product->unit_price) !!}
                                                 </del>
                                             @endif
                                         </h3>
@@ -304,6 +395,49 @@
                                             </div>
                                         </div>
                                     @endforeach
+
+                                    <!-- Delivery Information Section -->
+                                    <div class="mt-3 mb-3">
+                                        <div class="bg-light-green p-3 rounded d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-rocket text-warning me-2"></i>
+                                                <span class="text-dark">اطلب في 1 ساعة و 40 دقيقة</span>
+                                            </div>
+                                            <div class="d-flex align-items-center">
+                                                <span class="text-dark">توصيل سريع في الرياض خلال 3 ساعات</span>
+                                                <i class="fas fa-rocket text-warning ms-2"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Payment Options Section -->
+                                    <div class="mt-3 mb-3">
+                                        <div class="bg-light p-3 rounded text-center">
+                                            <h6 class="text-dark mb-2">أو قسمها على 4 دفعات شهرية بقيمة {{ number_format($product->unit_price / 4, 2) }} ر.س</h6>
+                                            <p class="text-muted mb-0">بدون فوائد ورسوم خفية!</p>
+                                            <div class="d-flex justify-content-center gap-3 mt-2">
+                                                <div class="border rounded p-2 bg-white">
+                                                    <img src="{{theme_asset(path: 'public/images/tabby_logo.svg')}}" alt="">
+                                                </div>
+                                                <div class="border rounded p-2 bg-white">
+                                                <img src="{{theme_asset(path: 'public/images/tamara_logo.svg')}}" alt="">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Product Authenticity Section -->
+                                    <div class="mt-3 mb-3">
+                                        <div class="bg-light-blue p-3 rounded d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-arrow-left text-light-blue"></i>
+                                            </div>
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-check-circle text-primary me-2"></i>
+                                                <span class="text-dark">منتج أصلي</span>
+                                            </div>
+                                        </div>
+                                    </div>
 
                                     <div class="mt-3">
                                         <div class="product-quantity d-flex flex-column __gap-15">
@@ -649,6 +783,27 @@
                                                         {{ translate('view_more') }}
                                                     </button>
                                                 </div>
+                                            </div>
+                                        @endif
+                                        @if(auth('customer')->check())
+                                            <div class="col-12 mt-3">
+                                                <form action="{{ route('review.store') }}" method="post" enctype="multipart/form-data" class="card card-body">
+                                                    @csrf
+                                                    <input type="hidden" name="product_id" value="{{ $product->id }}">
+                                                    <div class="form-group mb-2">
+                                                        <label class="text-capitalize">{{ translate('rating') }}</label>
+                                                        <select name="rating" class="form-control w-auto">
+                                                            @for($i=1;$i<=5;$i++)
+                                                                <option value="{{ $i }}">{{ $i }}</option>
+                                                            @endfor
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group mb-3">
+                                                        <label class="text-capitalize">{{ translate('comment') }}</label>
+                                                        <textarea name="comment" class="form-control" rows="3" placeholder="{{ translate('leave_a_comment') }}"></textarea>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-primary">{{ translate('submit') }}</button>
+                                                </form>
                                             </div>
                                         @endif
                                     </div>

@@ -1,25 +1,18 @@
-<div class="col-12 col-md-6 col-xl-3">
+<div class="col-12 col-md-6 col-xl-4">
     <a class="business-analytics border card" href="{{route('admin.orders.list',['all'])}}">
         <h4 class="business-analytics__subtitle">{{translate('total_order')}}</h4>
         <h3 class="h2">{{ $data['order'] }}</h3>
         <img  src="{{dynamicAsset(path: 'public/assets/back-end/img/all-orders.png')}}" width="30" height="30" class="position-absolute end-3 top-3" alt="">
     </a>
 </div>
-<div class="col-12 col-md-6 col-xl-3">
-    <a class="business-analytics border get-view-by-onclick card" href="{{route('admin.vendors.vendor-list')}}">
-        <h4>{{translate('total_Stores')}}</h4>
-        <h3 class="h2">{{ $data['store'] }}</h3>
-        <img width="30" src="{{dynamicAsset(path: 'public/assets/back-end/img/total-stores.png')}}" class="position-absolute end-3 top-3" alt="">
-    </a>
-</div>
-<div class="col-12 col-md-6 col-xl-3">
+<div class="col-12 col-md-6 col-xl-4">
     <a class="business-analytics border card">
         <h4 class="business-analytics__subtitle">{{translate('total_Products')}}</h4>
         <h3 class="h2">{{ $data['product'] }}</h3>
         <img width="30" src="{{dynamicAsset(path: 'public/assets/back-end/img/total-product.png')}}" class="position-absolute end-3 top-3" alt="">
     </a>
 </div>
-<div class="col-12 col-md-6 col-xl-3">
+<div class="col-12 col-md-6 col-xl-4">
     <a class="business-analytics border card" href="{{route('admin.customer.list')}}">
         <h4 class="business-analytics__subtitle">{{translate('total_Customers')}}</h4>
         <h3 class="h2">{{ $data['customer'] }}</h3>

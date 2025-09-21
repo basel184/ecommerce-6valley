@@ -30,11 +30,11 @@
                             <div class=" mt-sm-1">
                                 <span class="font-weight-bold amount text-dark price-range d-flex align-items-center gap-2">
                                     <span class="flash-product-price text-dark fw-semibold">
-                                        {{ getProductPriceByType(product: $product, type: 'discounted_unit_price', result: 'string') }}
+                                        {!! getProductPriceByType(product: $product, type: 'discounted_unit_price', result: 'string_with_image') !!}
                                     </span>
                                      @if(getProductPriceByType(product: $product, type: 'discount', result: 'value') > 0)
                                         <del class="category-single-product-price">
-                                            {{ webCurrencyConverter(amount: $product->unit_price)}}
+                                            {!! webCurrencyConverterWithImage(amount: $product->unit_price) !!}
                                         </del>
                                     @endif
                                 </span>

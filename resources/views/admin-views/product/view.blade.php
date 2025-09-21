@@ -42,7 +42,7 @@
 
                                 @if ($product->digital_file_ready_full_url['path'])
                                     <span data-file-path="{{ $product->digital_file_ready_full_url['path'] }}"
-                                          class="btn btn-outline-primary me-1 mt-2 text-nowrap d-flex align-items-center justify-content-center gap-1 getDownloadFileUsingFileUrl" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{translate('Download')}}">
+                                          class="btn btn-outline-primary me-1 mt-2 text-nowrap d-flex align-items-center justify-content-center gap-1 getDownloadFileUsingFileUrl" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{ translate('Download') }}">
                                           <i class="fi fi-rr-download"></i>
                                         <span class="d-block d-md-none">
                                         {{ translate('download') }}
@@ -99,8 +99,8 @@
                                                     @if($product['request_status'] == 0)
                                                         <button class="btn btn-success p-2 px-3 update-status"
                                                         data-id="{{ $product['id'] }}"
-                                                        data-redirect-route="{{route('admin.products.list',['vendor', 'status' => $product['request_status']])}}"
-                                                        data-message ="{{translate('want_to_approve_this_product_request').'?'}}" data-status="1">
+                                                        data-redirect-route="{{ route('admin.products.list',['vendor', 'status' => $product['request_status']]) }}"
+                                                        data-message ="{{ translate('want_to_approve_this_product_request').'?' }}" data-status="1">
                                                             {{ translate('approve') }}
                                                         </button>
                                                     @endif
@@ -110,8 +110,8 @@
                                         @if($product['added_by'] == 'seller' && ($product['request_status'] == 2))
                                             <div class="d-flex justify-content-sm-end flex-wrap gap-2 pb-4">
                                                 <div>
-                                                    <span>{{translate('status').' : '}}</span>
-                                                    <span class="badge text-bg-danger badge-danger">{{translate('rejected')}}</span>
+                                                    <span>{{ translate('status').' : ' }}</span>
+                                                    <span class="badge text-bg-danger badge-danger">{{ translate('rejected') }}</span>
                                                 </div>
                                             </div>
                                         @endif
@@ -305,7 +305,7 @@
                         <div class="d-flex flex-column">
                             <h6 class="fw-normal text-capitalize">{{ translate('total_sold_amount') }} :</h6>
                             <h3 class="text-primary fs-18">
-                                {{setCurrencySymbol(amount: usdToDefaultCurrency(amount: ($product['priceSum'] - $product['discountSum']))) }}
+                                {!! setCurrencySymbol(amount: usdToDefaultCurrency(amount: ($product['priceSum'] - $product['discountSum']))) !!}
                             </h3>
                         </div>
                     </div>
@@ -365,7 +365,7 @@
                                     <span class="key text-capitalize">{{ translate('unit_price') }}</span>
                                     <span>:</span>
                                     <span class="value">
-                                        {{setCurrencySymbol(amount: usdToDefaultCurrency(amount: $product->unit_price), currencyCode: getCurrencyCode()) }}
+                                        {!! setCurrencySymbol(amount: usdToDefaultCurrency(amount: $product->unit_price), currencyCode: getCurrencyCode()) !!}
                                     </span>
                                 </div>
 
@@ -378,7 +378,7 @@
                                         </span>
                                     @else
                                         <span class="value">
-                                            {{setCurrencySymbol(amount: usdToDefaultCurrency(amount: $product->tax)) }} ({{ $product->tax_model }})
+                                            {!! setCurrencySymbol(amount: usdToDefaultCurrency(amount: $product->tax)) !!} ({{ $product->tax_model }})
                                         </span>
                                     @endif
                                 </div>
@@ -387,7 +387,7 @@
                                         <span class="key text-capitalize">{{ translate('shipping_cost') }}</span>
                                         <span>:</span>
                                         <span class="value">
-                                            {{ setCurrencySymbol(amount: usdToDefaultCurrency(amount: $product->shipping_cost)) }}
+                                            {!! setCurrencySymbol(amount: usdToDefaultCurrency(amount: $product->shipping_cost)) !!}
                                             @if ($product->multiply_qty == 1)
                                                 ({{ translate('multiply_with_quantity') }})
                                             @endif
@@ -450,10 +450,10 @@
                                                 <span class="py-1">{{$value->sku}}</span>
                                             </td>
                                             <td class="text-center">
-                                                <span class="py-1">{{setCurrencySymbol(amount: usdToDefaultCurrency(amount: $value->price), currencyCode: getCurrencyCode())}}</span>
+                                                <span class="py-1">{!! setCurrencySymbol(amount: usdToDefaultCurrency(amount: $value->price), currencyCode: getCurrencyCode()) !!}</span>
                                             </td>
                                             <td class="text-center">
-                                                <span class="py-1">{{ ($value->qty)}}</span>
+                                                <span class="py-1">{{ ($value->qty) }}</span>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -497,7 +497,7 @@
                                             </td>
                                             <td class="text-center">
                                                 <span class="py-1">
-                                                    {{setCurrencySymbol(amount: usdToDefaultCurrency(amount: $variation->price), currencyCode: getCurrencyCode())}}
+                                                    {!! setCurrencySymbol(amount: usdToDefaultCurrency(amount: $variation->price), currencyCode: getCurrencyCode()) !!}
                                                 </span>
                                             </td>
 
@@ -519,19 +519,19 @@
                 </div>
             @endif
 
-                <div class="col-md-6">
+            <div class="col-md-6">
                 <div class="card h-100">
                     <div class="card-header bg-primary bg-opacity-10">
-                        <h3 class="text-dark mb-0">{{translate('product_SEO_&_meta_data')}}</h3>
+                        <h3 class="text-dark mb-0">{!! translate('product_SEO_&_meta_data') !!}</h3>
                     </div>
                     <div class="card-body">
                         <div>
                             <h4 class="mb-3 text-capitalize">
-                                {{ $product?->seoInfo?->title ?? ( $product->meta_title ?? translate('meta_title_not_found').' '.'!')}}
+                                {{ $product?->seoInfo?->title ?? ( $product->meta_title ?? translate('meta_title_not_found').' '.'!') }}
                             </h4>
                         </div>
                         <p class="text-capitalize">
-                            {{ $product?->seoInfo?->description ?? ($product->meta_description ?? translate('meta_description_not_found').' '.'!')}}
+                            {!! $product?->seoInfo?->description ?? ($product->meta_description ?? translate('meta_description_not_found').' '.'!') !!}
                         </p>
                         @if($product?->seoInfo?->image_full_url['path'] || $product->meta_image_full_url['path'])
                             <div class="d-flex flex-wrap gap-2">
@@ -542,7 +542,7 @@
                                    class="aspect-1 float-start overflow-hidden"
                                    data-index="1">
                                     <img class="max-w-100px rounded"
-                                         src="{{ getStorageImages(path: $product?->seoInfo?->image_full_url['path'] ? $product?->seoInfo?->image_full_url : $product->meta_image_full_url,type: 'backend-product') }}" alt="{{translate('meta_image')}}">
+                                         src="{{ getStorageImages(path: $product?->seoInfo?->image_full_url['path'] ? $product?->seoInfo?->image_full_url : $product->meta_image_full_url,type: 'backend-product') }}" alt="{{ translate('meta_image') }}">
                                 </a>
                                 <div class="modal fade imgViewModal" id="imgViewModal-seo-{{ $product->id }}"
                                      tabindex="-1"
@@ -588,12 +588,12 @@
             <div class="col-md-6">
                 <div class="card h-100">
                     <div class="card-header bg-primary bg-opacity-10">
-                        <h3 class="text-dark mb-0">{{translate('product_video')}}</h3>
+                        <h3 class="text-dark mb-0">{{ translate('product_video') }}</h3>
                     </div>
                     <div class="card-body">
                         <div>
                             <h4 class="mb-3 text-capitalize">
-                                {{$product['video_provider'].' '.translate('video_link')}}
+                                {{$product['video_provider'].' '.translate('video_link') }}
                             </h4>
                         </div>
                         @if($product['video_url'])
@@ -611,7 +611,7 @@
                 <div class="col-md-12">
                     <div class="card h-100">
                         <div class="card-header bg-primary bg-opacity-10">
-                            <h3 class="text-dark mb-0">{{translate('reject_reason')}}</h3>
+                            <h3 class="text-dark mb-0">{{ translate('reject_reason') }}</h3>
                         </div>
                         <div class="card-body">
                             <div>
@@ -685,7 +685,7 @@
                                                    href="{{ getStorageImages(path: $img,type: 'backend-product') }}"
                                                    data-lightbox="review-gallery{{ $review['id'] }}" >
                                                     <img class="p-2" width="60" height="60"
-                                                         src="{{ getStorageImages(path: $img,type: 'backend-product') }}" alt="{{translate('review_image')}}">
+                                                         src="{{ getStorageImages(path: $img,type: 'backend-product') }}" alt="{{ translate('review_image') }}">
                                                 </a>
                                             @endforeach
                                         @endif
@@ -813,7 +813,7 @@
                                                    data-lightbox="review-gallery-modal{{ $review['id'] }}" >
                                                     <img width="45" class="rounded aspect-1 border"
                                                          src="{{ getStorageImages(path: $img,type: 'backend-product') }}"
-                                                         alt="{{translate('review_image')}}">
+                                                         alt="{{ translate('review_image') }}">
                                                 </a>
                                             @endforeach
                                         @endif
@@ -891,7 +891,7 @@
                                                data-lightbox="review-gallery-modal{{ $review['id'] }}" >
                                                 <img width="45" class="rounded aspect-1 border"
                                                      src="{{ getStorageImages(path: $img,type: 'backend-product') }}"
-                                                     alt="{{translate('review_image')}}">
+                                                     alt="{{ translate('review_image') }}">
                                             </a>
                                         @endforeach
                                     @endif
@@ -937,21 +937,21 @@
                     @csrf
                     <div class="modal-body">
                         <textarea class="form-control text-area-max-min" name="denied_note" rows="3" data-maxlength="100"></textarea>
-                        <span id="denied-note-word-count" class="text-body-light">{{translate('0/100')}}</span>
+                        <span id="denied-note-word-count" class="text-body-light">{{ translate('0/100') }}</span>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ translate('close') }}
                         </button>
                         <button type="button" class="btn btn-primary form-submit"
                                 data-message="{{ translate('want_to_reject_this_product_request') }}"
-                                data-redirect-route="{{route('admin.products.list',['vendor','status' => $product['request_status']])}}"
+                                data-redirect-route="{{ route('admin.products.list',['vendor','status' => $product['request_status']]) }}"
                                 data-form-id="product-status-denied">{{ translate('submit') }}</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-    <span id="get-update-status-route" data-action="{{ route('admin.products.approve-status')}}"></span>
+    <span id="get-update-status-route" data-action="{{ route('admin.products.approve-status') }}"></span>
 @endsection
 @push('script')
     <script src="{{ dynamicAsset(path: 'public/assets/back-end/js/admin/product-view.js') }}"></script>

@@ -428,9 +428,12 @@ class CartManager
             $isGuest = 0;
         }
 
-        if ($request->has('color')) {
-            $string .= Color::where(['code' => $request['color']])->first()->name;
-            $variations['color'] = $string;
+        if ($request->has('color') && !empty($request['color'])) {
+            $color = Color::where(['code' => $request['color']])->first();
+            if ($color) {
+                $string .= $color->name;
+                $variations['color'] = $string;
+            }
         }
 
         $choices = [];
@@ -538,7 +541,14 @@ class CartManager
             }
 
             if ($product['product_type'] == 'physical' && $shippingType == 'order_wise') {
-                if ($request['shipping_method_exist'] && $request['shipping_method_id'] && count($sellerShippingList) > 0) {
+                // استخدام طريقة شحن افتراضية إذا لم يتم تحديد طريقة شحن
+                if ((!isset($request['shipping_method_id']) || !$request['shipping_method_id']) && count($sellerShippingList) > 0) {
+                    // استخدام أول طريقة شحن متوفرة
+                    $request['shipping_method_id'] = $sellerShippingList[0]->id ?? null;
+                    $request['shipping_method_exist'] = true;
+                }
+                
+                if (($request['shipping_method_exist'] && $request['shipping_method_id']) || count($sellerShippingList) > 0) {
                     $cart->update(['is_checked' => 1]);
                     $cartGroupIds = Cart::where(['customer_id' => ($user == 'offline' ? $guestId : $user->id), 'is_guest' => ($user == 'offline' ? 1 : 0)])
                         ->pluck('cart_group_id');
@@ -571,7 +581,7 @@ class CartManager
                 }
                 return [
                     'status' => $sellerShippingList && count($sellerShippingList) > 0 ? 2 : 0,
-                    'message' => $sellerShippingList && count($sellerShippingList) > 0 ? translate('Please_select_shipping_method') : translate('Shipping_Not_Available_for_this_Shop'),
+                    'message' => $sellerShippingList && count($sellerShippingList) > 0 ? translate('Shipping_Method') : translate('Shipping_Not_Available_for_this_Shop'),
                     'shipping_method_list' => $sellerShippingList,
                 ];
             } elseif ($product['product_type'] == 'physical' && ($shippingType == 'category_wise' || $shippingType == 'product_wise')) {

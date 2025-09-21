@@ -562,6 +562,8 @@ class ShopViewController extends Controller
             $productListData = ProductManager::getProductListData($request);
         }
 
+    // No hardcoded category exclusions; rely solely on filters provided
+
         $category = [];
         if ($request['category_ids']) {
             $category = Category::whereIn('id', $request['category_ids'])->get();
@@ -582,11 +584,19 @@ class ShopViewController extends Controller
             $productAuthors = Author::whereIn('id', $request['author_ids'])->select('id', 'name')->get();
         }
 
-        $rating = $request->rating ?? [];
-        $productsCount = $productListData->count();
-        $paginateCount = ceil($productsCount / $singlePageProductCount);
-        $currentPage = $offset ?? Paginator::resolveCurrentPage('page');
-        $results = $productListData->forPage($currentPage, $singlePageProductCount);
+    $rating = $request->rating ?? [];
+
+    // Determine current page from request input (supports POST), fallback to 1
+    $currentPage = (int) $request->input('page', 1);
+    if ($currentPage < 1) { $currentPage = 1; }
+
+    $productsCount = $productListData->count();
+    $paginateCount = (int) ceil($productsCount / $singlePageProductCount);
+    // Clamp current page within bounds
+    if ($paginateCount > 0 && $currentPage > $paginateCount) { $currentPage = $paginateCount; }
+
+    $results = $productListData->forPage($currentPage, $singlePageProductCount);
+    $pageProductsCount = $results->count();
         $products = new LengthAwarePaginator(items: $results, total: $productsCount, perPage: $singlePageProductCount, currentPage: $currentPage, options: [
             'path' => Paginator::resolveCurrentPath(),
             'appends' => $request->all(),
@@ -598,7 +608,7 @@ class ShopViewController extends Controller
             'html_products' => view('theme-views.product._ajax-products', [
                 'products' => $products,
                 'paginate_count' => $paginateCount,
-                'page' => ($request->page ?? 1),
+                'page' => $currentPage,
                 'request_data' => $request->all(),
                 'singlePageProductCount' => $singlePageProductCount,
                 'data' => $data,
@@ -611,7 +621,9 @@ class ShopViewController extends Controller
                 'productAuthors' => $productAuthors,
                 'sort_by' => $request['sort_by'],
             ])->render(),
-            'products_count' => $productsCount,
+            'products_count' => $productsCount, // total filtered products
+            'page_products_count' => $pageProductsCount, // products returned in this page
+            'has_more' => ($currentPage < $paginateCount),
             'products' => $products,
             'singlePageProductCount' => $singlePageProductCount,
         ]);
@@ -689,5 +701,72 @@ class ShopViewController extends Controller
         }
 
         return $data;
+    }
+
+    public function loadMoreProductsAjax(Request $request): JsonResponse
+    {
+        $singlePageProductCount = $request['per_page_product'] ?? 25;
+        $currentPage = $request['page'] ?? 1;
+        
+        if ($request->has('shop_id')) {
+            $shopID = $request['shop_id'];
+            self::checkShopExistence($shopID);
+            $productAddedBy = $shopID == 0 ? 'admin' : 'seller';
+            $productUserID = $shopID == 0 ? $shopID : Shop::where('id', $shopID)->first()->seller_id;
+            $productListData = ProductManager::getProductListData($request, $productUserID, $productAddedBy);
+        } else {
+            $productListData = ProductManager::getProductListData($request);
+        }
+
+        $productsCount = $productListData->count();
+        $paginateCount = ceil($productsCount / $singlePageProductCount);
+        $results = $productListData->forPage($currentPage, $singlePageProductCount);
+        
+        // Create only the product cards HTML adjusted per active theme
+        $productsHtml = '';
+        $themeName = function_exists('theme_root_path') ? theme_root_path() : 'default';
+
+        if ($themeName === 'default') {
+            $decimalPointSettings = getWebConfig(name: 'decimal_point_settings');
+            foreach ($results as $item) {
+                $product = !empty($item['product_id']) ? $item->product : $item;
+                if (!empty($product)) {
+                    $card = view('web-views.partials._filter-single-product', [
+                        'product' => $product,
+                        'decimal_point_settings' => $decimalPointSettings,
+                    ])->render();
+                    // Wrap with the grid column like the default theme list
+                    $productsHtml .= '<div class="col-lg-3 col-md-3 col-sm-4 col-6 p-2">' . $card . '</div>';
+                }
+            }
+        } elseif ($themeName === 'theme_fashion') {
+            foreach ($results as $product) {
+                $productsHtml .= view('theme-views.partials._products-list-single-card', ['product' => $product])->render();
+            }
+        } else {
+            // Fallback to returning the default theme structure to keep it functional
+            $decimalPointSettings = getWebConfig(name: 'decimal_point_settings');
+            foreach ($results as $item) {
+                $product = !empty($item['product_id']) ? $item->product : $item;
+                if (!empty($product)) {
+                    $card = view('web-views.partials._filter-single-product', [
+                        'product' => $product,
+                        'decimal_point_settings' => $decimalPointSettings,
+                    ])->render();
+                    $productsHtml .= '<div class="col-lg-3 col-md-3 col-sm-4 col-6 p-2">' . $card . '</div>';
+                }
+            }
+        }
+
+        $hasMorePages = $currentPage < $paginateCount;
+
+        return response()->json([
+            'success' => true,
+            'products_html' => $productsHtml,
+            'current_page' => $currentPage,
+            'total_pages' => $paginateCount,
+            'has_more_pages' => $hasMorePages,
+            'products_count' => $results->count(),
+        ]);
     }
 }

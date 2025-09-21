@@ -55,6 +55,11 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->isLocal()) {
             $this->app->register(\Amirami\Localizator\ServiceProvider::class);
         }
+
+        // Register MyFatoorah Service
+        $this->app->singleton(\App\Services\MyFatoorahService::class, function ($app) {
+            return new \App\Services\MyFatoorahService();
+        });
     }
 
     /**
@@ -67,6 +72,11 @@ class AppServiceProvider extends ServiceProvider
     {
         if (!in_array(request()->ip(), ['127.0.0.1', '::1']) && env('FORCE_HTTPS')) {
             \URL::forceScheme('https');
+        }
+
+        // Force base URL to avoid www/non-www mismatches in generated callbacks
+        if (config('app.url')) {
+            \URL::forceRootUrl(config('app.url'));
         }
 
         if (!App::runningInConsole()) {

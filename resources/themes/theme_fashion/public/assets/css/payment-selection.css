@@ -1,0 +1,237 @@
+/* Payment Gateway Selection Styles */
+/* تنسيق اختيار بوابات الدفع */
+
+.payment-option {
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid #e0e0e0 !important;
+    background: white;
+}
+
+.payment-option:hover {
+    border-color: #007bff !important;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+.payment-option.selected {
+    border-color: #28a745 !important;
+    box-shadow: 0 4px 20px rgba(40, 167, 69, 0.25);
+    background-color: rgba(40, 167, 69, 0.05);
+}
+
+.payment-option.payment-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #f8f9fa;
+}
+
+.payment-option.payment-disabled:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: #e0e0e0 !important;
+}
+
+/* Payment Selection Indicator */
+.payment-selection-indicator {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    background: white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.3s ease;
+}
+
+.payment-option.selected .payment-selection-indicator {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.payment-selection-indicator i {
+    font-size: 18px;
+    color: #28a745;
+}
+
+/* Alternative using CSS content if Bootstrap Icons not available */
+.payment-selection-indicator::before {
+    content: '✓';
+    font-size: 16px;
+    font-weight: bold;
+    color: #28a745;
+    display: none;
+}
+
+/* Show CSS checkmark if icon is not available */
+.payment-selection-indicator:not(:has(i))::before {
+    display: block;
+}
+
+/* Payment Card Content */
+.payment-card-content {
+    position: relative;
+    z-index: 5;
+}
+
+.payment-card-content img {
+    transition: all 0.3s ease;
+}
+
+.payment-option:hover .payment-card-content img {
+    transform: scale(1.05);
+}
+
+.payment-option.selected .payment-card-content img {
+    transform: scale(1.1);
+}
+
+/* Payment Status Overlay */
+.payment-status-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 15;
+    border-radius: 8px;
+}
+
+.payment-status-overlay i {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.payment-status-overlay .status-text {
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    color: #6c757d;
+}
+
+/* Main Payment Button */
+#proceedPaymentBtn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 16px;
+    min-width: 200px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+#proceedPaymentBtn:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+#proceedPaymentBtn:hover:before {
+    left: 100%;
+}
+
+#proceedPaymentBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+}
+
+#proceedPaymentBtn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+#proceedPaymentBtn:disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+#proceedPaymentBtn:disabled:before {
+    display: none;
+}
+
+/* Radio Button Hiding */
+.payment-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .payment-option {
+        margin-bottom: 15px;
+    }
+    
+    .payment-selection-indicator {
+        width: 25px;
+        height: 25px;
+        top: 8px;
+        right: 8px;
+    }
+    
+    .payment-selection-indicator i {
+        font-size: 14px;
+    }
+    
+    .payment-selection-indicator::before {
+        font-size: 14px;
+    }
+    
+    #proceedPaymentBtn {
+        min-width: 100%;
+        font-size: 14px;
+        padding: 12px 20px;
+    }
+}
+
+/* Animation for payment method change */
+@keyframes paymentSelected {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.02);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.payment-option.just-selected {
+    animation: paymentSelected 0.4s ease;
+}
+
+/* RTL Support */
+[dir="rtl"] .payment-selection-indicator {
+    right: auto;
+    left: 10px;
+}
+
+@media (max-width: 768px) and (dir: rtl) {
+    .payment-selection-indicator {
+        left: 8px;
+        right: auto;
+    }
+}

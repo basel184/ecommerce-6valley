@@ -15,7 +15,13 @@ class InstallationMiddleware
      */
     public function handle($request, Closure $next)
     {
-        // Skip license validation - allow installation to proceed
+        if (session()->has('purchase_key') == false && env('PURCHASE_CODE') == null) {
+            session()->flash('error', base64_decode('SW52YWxpZCBwdXJjaGFzZSBjb2RlIGZvciB0aGlzIHNvZnR3YXJlLg=='));
+            return redirect('step2');
+        }elseif(env('PURCHASE_CODE') != null){
+            return $next($request);
+        }
+
         return $next($request);
     }
 }

@@ -66,10 +66,6 @@ class HomeController extends Controller
         $topVendorsList = ProductManager::getPriorityWiseTopVendorQuery($this->cacheHomePageTopVendorsList());
         $bannerTypeFooterBanner = $this->cacheBannerTable(bannerType: 'Footer Banner', dataLimit: 10);
         $clearanceSaleProducts = $this->cacheHomePageClearanceSaleProducts();
-        $homeSections = \App\Models\HomeSection::with([
-            'products' => function($q){ $q->active(); },
-            'banners'
-        ])->where('status', 1)->orderBy('sort_order')->get();
 
         $categories = CategoryManager::getCategoriesWithCountingAndPriorityWiseSorting();
         $userId = Auth::guard('customer')->user() ? Auth::guard('customer')->id() : 0;
@@ -100,7 +96,7 @@ class HomeController extends Controller
             compact(
                 'flashDeal', 'featuredProductsList', 'topRatedProducts', 'bestSellProduct', 'latestProductsList', 'categories', 'brands',
                 'dealOfTheDay', 'topVendorsList', 'homeCategories', 'bannerTypeMainBanner', 'bannerTypeMainSectionBanner',
-                'current_date', 'recommendedProduct', 'bannerTypeFooterBanner', 'newArrivalProducts', 'clearanceSaleProducts', 'homeSections'
+                'current_date', 'recommendedProduct', 'bannerTypeFooterBanner', 'newArrivalProducts', 'clearanceSaleProducts'
             )
         );
     }
@@ -113,10 +109,6 @@ class HomeController extends Controller
         $randomSingleProduct = $this->cacheHomePageRandomSingleProductItem();
         $topVendorsList = ProductManager::getPriorityWiseTopVendorQuery(query: $this->cacheHomePageTopVendorsList());
         $clearanceSaleProducts = $this->cacheHomePageClearanceSaleProducts();
-        $homeSections = \App\Models\HomeSection::with([
-            'products' => function($q){ $q->active(); },
-            'banners'
-        ])->where('status', 1)->orderBy('sort_order')->get();
 
         $categories = CategoryManager::getCategoriesWithCountingAndPriorityWiseSorting(dataLimit: 11);
         $userId = Auth::guard('customer')->user() ? Auth::guard('customer')->id() : 0;
@@ -337,7 +329,7 @@ class HomeController extends Controller
                 'flashDeal', 'topRatedProducts', 'bestSellProduct', 'latestProductsList', 'featuredProductsList', 'dealOfTheDay', 'topVendorsList',
                 'homeCategories', 'bannerTypeMainBanner', 'bannerTypeFooterBanner', 'randomSingleProduct', 'decimal_point_settings', 'justForYouProducts', 'moreVendors',
                 'final_category', 'category_slider', 'order_again', 'bannerTypeSidebarBanner', 'bannerTypeMainSectionBanner', 'random_coupon', 'bannerTypeTopSideBanner',
-                'categories', 'topVendorsListSectionShowingStatus', 'clearanceSaleProducts', 'recommendedProduct', 'homeSections'
+                'categories', 'topVendorsListSectionShowingStatus', 'clearanceSaleProducts', 'recommendedProduct'
             )
         );
     }
@@ -386,6 +378,38 @@ class HomeController extends Controller
             ->withSum('tags', 'visit_count')->orderBy('tags_sum_visit_count', 'desc')->get()->take(10);
         });
 
+        // Get products from category 230
+        $category230Products = Cache::remember('category_230_products', CACHE_FOR_3_HOURS, function () {
+            return Product::active()
+                ->with(['category', 'clearanceSale' => function ($query) {
+                    return $query->active();
+                }])
+                ->withCount('reviews')
+                ->where(function($query) {
+                    $query->where('category_id', 230)
+                          ->orWhere('sub_category_id', 230)
+                          ->orWhere('sub_sub_category_id', 230);
+                })
+                ->orderBy('unit_price', 'asc')
+                ->take(12)
+                ->get();
+        });
+
+        // Get discounted products (products with discount > 0)
+        $discountedProducts = Cache::remember('discounted_products', CACHE_FOR_3_HOURS, function () {
+            return Product::active()
+                ->with(['category', 'clearanceSale' => function ($query) {
+                    return $query->active();
+                }])
+                ->withCount('reviews')
+                ->where('discount', '>', 0)
+                ->where('category_id', '!=' , 230)
+                ->where('category_id', '!=' , 776)
+                ->orderBy('unit_price', 'asc')
+                ->take(12)
+                ->get();
+        });
+
         $dealOfTheDay = $this->dealOfTheDay->with(['product' => function ($query) {
             $query->active()->with(['clearanceSale' => function ($query) {
                 $query->active();
@@ -406,7 +430,7 @@ class HomeController extends Controller
             ->withSum('orderDetails', 'qty')
             ->active();
 
-        $allProductsList = $baseProductQuery->orderBy('order_details_sum_qty', 'DESC')->paginate(20);
+        $allProductsList = $baseProductQuery->orderBy('unit_price', 'asc')->paginate(20);
         $allProductsList?->map(function ($product) use ($currentDate) {
             $flashDealStatus = 0;
             $flashDealEndDate = 0;
@@ -431,7 +455,7 @@ class HomeController extends Controller
                     $query->where(['customer_id' => auth('customer')->id(), 'seller_is' => 'seller']);
                 })
                 ->active()
-                ->inRandomOrder()->take(12)->get();
+                ->orderBy('unit_price', 'asc')->take(12)->get();
         }
 
         $allProductSectionOrders = $this->order->where(['order_type' => 'default_type'])->whereHas('orderDetails', function ($query) {
@@ -453,7 +477,7 @@ class HomeController extends Controller
         return view(VIEW_FILE_NAMES['home'],
             compact(
                 'activeBrands', 'latestProductsList', 'dealOfTheDay', 'topVendorsList', 'topRatedShops', 'bannerTypeMainBanner', 'mostVisitedCategories', 'randomSingleProduct', 'newSellers', 'bannerTypeSidebarBanner', 'bannerTypeTopSideBanner', 'recentOrderShopList',
-                'categories', 'allProductsColorList', 'allProductsGroupInfo', 'mostSearchingProducts', 'mostDemandedProducts', 'featuredProductsList', 'bannerTypePromoBannerLeft', 'bannerTypePromoBannerMiddleTop', 'bannerTypePromoBannerMiddleBottom', 'bannerTypePromoBannerRight', 'bannerTypePromoBannerBottom', 'currentDate', 'allProductsList', 'flashDeal', 'data', 'clearanceSaleProducts', 'singlePageProductCount', 'recommendedProduct'
+                'categories', 'allProductsColorList', 'allProductsGroupInfo', 'mostSearchingProducts', 'mostDemandedProducts', 'featuredProductsList', 'bannerTypePromoBannerLeft', 'bannerTypePromoBannerMiddleTop', 'bannerTypePromoBannerMiddleBottom', 'bannerTypePromoBannerRight', 'bannerTypePromoBannerBottom', 'currentDate', 'allProductsList', 'flashDeal', 'data', 'clearanceSaleProducts', 'singlePageProductCount', 'recommendedProduct', 'category230Products', 'discountedProducts'
             )
         );
     }

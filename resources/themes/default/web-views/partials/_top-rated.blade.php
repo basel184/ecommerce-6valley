@@ -63,12 +63,12 @@
                                             <span>
                                                 @if(getProductPriceByType(product: $product, type: 'discount', result: 'value') > 0)
                                                     <del class="__text-12px __color-9B9B9B">
-                                                        {{ webCurrencyConverter(amount: $product->unit_price) }}
+                                                        {!! webCurrencyConverterWithImage(amount: $product->unit_price) !!}
                                                     </del>
                                                 @endif
                                             </span>
                                             <span class="text-accent text-dark">
-                                               {{ getProductPriceByType(product: $product, type: 'discounted_unit_price', result: 'string') }}
+                                               {!! getProductPriceByType(product: $product, type: 'discounted_unit_price', result: 'string_with_image') !!}
                                             </span>
                                         </h4>
                                     </div>

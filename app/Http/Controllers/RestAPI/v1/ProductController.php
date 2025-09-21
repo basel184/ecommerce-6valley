@@ -92,32 +92,18 @@ class ProductController extends Controller
 
     public function get_searched_products(Request $request): JsonResponse
     {
-        // Support both 'name' and 'search' (base64 or plain) for backward compatibility
-        $rawTerm = $request->has('name') ? $request->get('name') : ($request->has('search') ? $request->get('search') : null);
-        if ($rawTerm === null || $rawTerm === '') {
-            $validator = Validator::make($request->all(), [
-                'name' => 'required_without:search',
-                'search' => 'required_without:name',
-            ]);
-            if ($validator->fails()) {
-                return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
-            }
+        $validator = Validator::make($request->all(), [
+            'name' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
         }
 
-        // If 'search' is provided and looks like base64, decode it; otherwise use as-is
-        $term = $request->has('name') ? $request->get('name') : $request->get('search');
-        if ($request->has('search')) {
-            // Try to base64-decode safely; if fails, keep original
-            $decoded = base64_decode($term, true);
-            if ($decoded !== false && $decoded !== '') {
-                $term = $decoded;
-            }
-        }
-
-        $products = ProductManager::search_products($request, $term, 'all', $request['limit'], $request['offset']);
+        $products = ProductManager::search_products($request, $request['name'], 'all', $request['limit'], $request['offset']);
 
         if ($products['products'] == null) {
-            $products = ProductManager::translated_product_search(base64_encode($term), 'all', $request['limit'], $request['offset']);
+            $products = ProductManager::translated_product_search(base64_encode($request['name']), 'all', $request['limit'], $request['offset']);
         }
         $products['products'] = Helpers::product_data_formatting($products['products'], true);
         return response()->json($products, 200);
@@ -125,29 +111,11 @@ class ProductController extends Controller
 
     public function getProductsFilter(Request $request): JsonResponse
     {
-        // Build search terms safely (support base64 or plain) and avoid null entries
-        $search = [];
-        if ($request->has('search') && !empty($request->get('search'))) {
-            $decoded = base64_decode($request->get('search'), true);
-            $search[] = $decoded !== false && $decoded !== '' ? $decoded : $request->get('search');
-        }
-
-    // Decode potential array filters; accept both JSON-encoded strings and already-parsed arrays. Ensure arrays to avoid whereIn(null)
-    $categoriesRaw = $request->has('category') ? $request->get('category') : [];
-    $categories = is_string($categoriesRaw) ? json_decode($categoriesRaw, true) : $categoriesRaw;
-    if (!is_array($categories)) { $categories = []; }
-
-    $brandRaw = $request->has('brand') ? $request->get('brand') : [];
-    $brand = is_string($brandRaw) ? json_decode($brandRaw, true) : $brandRaw;
-    if (!is_array($brand)) { $brand = []; }
-
-    $publishingHousesRaw = $request->has('publishing_houses') ? $request->get('publishing_houses') : [];
-    $publishingHouses = is_string($publishingHousesRaw) ? json_decode($publishingHousesRaw, true) : $publishingHousesRaw;
-    if (!is_array($publishingHouses)) { $publishingHouses = []; }
-
-    $productAuthorsRaw = $request->has('product_authors') ? $request->get('product_authors') : [];
-    $productAuthors = is_string($productAuthorsRaw) ? json_decode($productAuthorsRaw, true) : $productAuthorsRaw;
-    if (!is_array($productAuthors)) { $productAuthors = []; }
+        $search = [base64_decode($request->search)];
+        $categories = json_decode($request->category);
+        $brand = json_decode($request->brand);
+        $publishingHouses = $request->has('publishing_houses') ? json_decode($request['publishing_houses']) : [];
+        $productAuthors = $request->has('product_authors') ? json_decode($request['product_authors']) : [];
 
         $publishingHouseList = PublishingHouse::with(['publishingHouseProducts'])
             ->whereHas('publishingHouseProducts.product', function ($query) {
@@ -189,13 +157,8 @@ class ProductController extends Controller
         $productsIDArray = [];
         if ($request->has('search') && !empty($request['search'])) {
             $productsIDArray = [0];
-            $term = $request->get('search');
-            $decoded = base64_decode($term, true);
-            $term = $decoded !== false && $decoded !== '' ? $decoded : $term;
-
-            $searchProducts = ProductManager::search_products($request, $term, 'all', $request['limit'], $request['offset']);
+            $searchProducts = ProductManager::search_products($request, base64_decode($request->search), 'all', $request['limit'], $request['offset']);
             if ($searchProducts['products'] == null || app()->getLocale() !== 'en') {
-                // Fallback to translated search using original (possibly base64) term as existing logic expects
                 $searchProducts = ProductManager::translated_product_search($request->search, 'all', $request['limit'], $request['offset']);
             }
             if ($searchProducts['products']) {
@@ -205,15 +168,9 @@ class ProductController extends Controller
             }
         }
 
-        // Prepare category id buckets only when categories filter is provided
-        $categoryList = [];
-        $subCategoryIds = [];
-        $subSubCategoryIds = [];
-        if (!empty($categories)) {
-            $categoryList = Category::where(['position' => 0])->whereIn('id', $categories)->pluck('id')->toArray();
-            $subCategoryIds = Category::where(['position' => 1])->whereIn('id', $categories)->pluck('id')->toArray();
-            $subSubCategoryIds = Category::where(['position' => 2])->whereIn('id', $categories)->pluck('id')->toArray();
-        }
+        $categoryList = Category::where(['position' => 0])->whereIn('id', $categories)->pluck('id')->toArray();
+        $subCategoryIds = Category::where(['position' => 1])->whereIn('id', $categories)->pluck('id')->toArray();
+        $subSubCategoryIds = Category::where(['position' => 2])->whereIn('id', $categories)->pluck('id')->toArray();
 
         // Products search
         $products = Product::active()->with(['rating', 'tags', 'clearanceSale' => function ($query) {
@@ -298,17 +255,8 @@ class ProductController extends Controller
                 $stockClearanceProductIds = StockClearanceProduct::active()->pluck('product_id')->toArray();
                 return $query->whereIn('id', $stockClearanceProductIds);
             })
-            // Price range handling: support min-only or max-only without passing nulls to whereBetween
-            ->when(($request->has('price_min') && $request['price_min'] !== '') || ($request->has('price_max') && $request['price_max'] !== ''), function ($query) use ($request) {
-                $priceMin = ($request->has('price_min') && $request['price_min'] !== '') ? (float)$request['price_min'] : null;
-                $priceMax = ($request->has('price_max') && $request['price_max'] !== '') ? (float)$request['price_max'] : null;
-                if (!is_null($priceMin) && !is_null($priceMax)) {
-                    return $query->whereBetween('unit_price', [$priceMin, $priceMax]);
-                }
-                if (!is_null($priceMin)) {
-                    return $query->where('unit_price', '>=', $priceMin);
-                }
-                return $query->where('unit_price', '<=', $priceMax);
+            ->when(!empty($request['price_min']) || !empty($request['price_max']), function ($query) use ($request) {
+                return $query->whereBetween('unit_price', [$request['price_min'], $request['price_max']]);
             });
 
         if (request('offer_type') == 'clearance_sale') {

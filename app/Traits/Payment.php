@@ -79,6 +79,9 @@ trait Payment
             'phonepe' => 'payment/phonepe/pay',
             'cashfree' => 'payment/cashfree/pay',
             'instamojo' => 'payment/instamojo/pay',
+            'tabby' => 'payment/tabby/pay',
+            // Tamara routes are defined at top-level as /tamara/*, not under /payment
+            'tamara' => 'tamara/pay',
         ];
         if (array_key_exists($payment->payment_method, $routes)) {
             return url("{$routes[$payment->payment_method]}/?payment_id={$payment->id}");

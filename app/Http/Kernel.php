@@ -2,7 +2,7 @@
 
 namespace App\Http;
 
-
+use App\Http\Middleware\ActivationCheckMiddleware;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\APIGuestMiddleware;
 use App\Http\Middleware\APILocalizationMiddleware;
@@ -17,7 +17,6 @@ use App\Http\Middleware\ModulePermissionMiddleware;
 use App\Http\Middleware\SellerApiAuthMiddleware;
 use App\Http\Middleware\SellerMiddleware;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
-use Illuminate\Http\Middleware\HandleCors;
 
 class Kernel extends HttpKernel
 {
@@ -31,7 +30,6 @@ class Kernel extends HttpKernel
     protected $middleware = [
         \App\Http\Middleware\TrustProxies::class,
         \App\Http\Middleware\CheckForMaintenanceMode::class,
-    HandleCors::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
@@ -83,7 +81,7 @@ class Kernel extends HttpKernel
         'customer' => CustomerMiddleware::class,
         'module' => ModulePermissionMiddleware::class,
         'installation-check' => InstallationMiddleware::class,
-
+        'actch' => ActivationCheckMiddleware::class,
         'api_lang' => APILocalizationMiddleware::class,
         'maintenance_mode' => MaintenanceModeMiddleware::class,
         'delivery_man_auth' => DeliveryManAuth::class,

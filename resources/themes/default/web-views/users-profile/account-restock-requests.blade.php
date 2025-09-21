@@ -100,7 +100,7 @@
                                                      @endphp
                                                     @if(getProductPriceByType(product: $restockProduct?->product, type: 'discount', result: 'value') > 0)
                                                         <span class="discounted-unit-price font-bold">
-                                                            {{ getProductPriceByType(product: $restockProduct?->product, type: 'discounted_unit_price', result: 'string', price: $productPrices) }}
+                                                            {{ webCurrencyConverterWithImage(product: $restockProduct?->product, type: 'discounted_unit_price', result: 'string', price: $productPrices) }}
                                                         </span>
                                                         <del class="product-total-unit-price align-middle text-muted fs-18 font-semibold">
                                                             {{ webCurrencyConverter(amount: $productPrices) }}

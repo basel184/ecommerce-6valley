@@ -1,0 +1,72 @@
+/* Order Summary Price Display CSS Fix */
+/* إصلاح عرض الأسعار في ملخص الطلب */
+
+/* Hide stray riyal symbols that appear separately */
+.total-cost-wrapper {
+    position: relative;
+}
+
+/* Style for proper price display */
+.total-cost-wrapper .total-cost-info li span {
+    display: inline-block;
+}
+
+/* Ensure price-display elements show riyal symbol correctly */
+.price-display {
+    font-weight: 600 !important;
+    color: var(--base-color, #333) !important;
+    white-space: nowrap;
+}
+
+/* Special styling for total price */
+.total-price {
+    font-size: 1.1em !important;
+    font-weight: bold !important;
+    color: #28a745 !important;
+}
+
+/* Ensure prices are displayed properly */
+.total-cost-wrapper .total-cost-info li span:last-child {
+    font-weight: 600;
+    color: var(--base-color, #333);
+}
+
+/* Fix for proceed button text alignment */
+.proceed-cart-btn button {
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* Prevent text overflow issues */
+.total-cost-wrapper .total-cost-info li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    line-height: 1.5;
+    margin-bottom: 8px;
+}
+
+/* Style for total amount display */
+.proceed-cart-btn h6 {
+    font-weight: bold;
+    border-top: 1px solid #ddd;
+    padding-top: 10px;
+}
+
+/* Clean up any floating riyal symbols */
+.total-cost-wrapper::after {
+    content: '';
+    display: block;
+    clear: both;
+}
+
+/* Force proper display of riyal symbol in prices */
+.price-display::after {
+    content: '';
+    display: inline;
+}
+
+/* Ensure no extra riyal symbols appear */
+.total-cost-wrapper *:not(.price-display):not(.total-price)::after {
+    content: none !important;
+}

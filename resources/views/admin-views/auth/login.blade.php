@@ -1,6 +1,6 @@
 @php use App\Enums\DemoConstant; @endphp
     <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="utf-8">
     <meta name="_token" content="{{ csrf_token() }}">
@@ -39,22 +39,11 @@
             <div class="auth-left-cont user-select-none">
                 @php($eCommerceLogo = getWebConfig(name: 'company_web_logo'))
                 <a class="d-inline-flex mb-5" href="{{ route('home') }}">
-                    <img width="310" src="{{ getStorageImages(path: $eCommerceLogo, type:'backend-logo') }}" alt="Logo">
+                    <img width="100%" src="{{ getStorageImages(path: $eCommerceLogo, type:'backend-logo') }}" alt="Logo">
                 </a>
-                <h2 class="title h1">
-                    {{ translate('Make Your Business') }}
-                    <span class="fw-bold text-primary d-block text-capitalize">
-                        {{ translate('Profitable...') }}
-                    </span>
-                </h2>
             </div>
         </div>
         <div class="auth-wrapper-right">
-            @if(SOFTWARE_VERSION)
-                <label class="badge badge-success text-bg-success float-end __inline-2 user-select-none">
-                    {{ translate('software_version') }} : {{ SOFTWARE_VERSION }}
-                </label>
-            @endif
             <div class="auth-wrapper-form">
                 <form id="form-id" action="{{route('login') }}" method="post" id="admin-login-form">
                     @csrf
@@ -163,7 +152,14 @@
         </div>
     </div>
 </main>
-
+<style>
+    .auth-wrapper-left .auth-left-cont img{
+        max-width: 100%;
+        height: auto;
+        width: 100%;
+        max-height: 100%;
+    }
+</style>
 <span id="message-please-check-recaptcha" data-text="{{ translate('please_check_the_recaptcha') }}"></span>
 <span id="message-copied_success" data-text="{{ translate('copied_successfully') }}"></span>
 <span id="route-get-session-recaptcha-code" data-route="{{ route('get-session-recaptcha-code') }}"

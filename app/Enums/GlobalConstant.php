@@ -560,6 +560,8 @@ enum GlobalConstant
         ['key' => 'payfast', 'value' => 'Pay Fast'],
         ['key' => 'worldpay', 'value' => 'World Pay'],
         ['key' => 'sixcash', 'value' => 'Six Cash'],
+        ['key' => 'tabby', 'value' => 'Tabby'],
+        ['key' => 'tamara', 'value' => 'Tamara'],
     ];
 
     //currencies

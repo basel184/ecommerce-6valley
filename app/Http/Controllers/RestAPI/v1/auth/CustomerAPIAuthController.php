@@ -228,7 +228,7 @@ class CustomerAPIAuthController extends Controller
             ], 403);
         }
 
-        $token = (env('APP_MODE') == 'live') ? rand(100000, 999999) : 123456;
+        $token = (env('APP_MODE') == 'live') ? rand(1000, 9999) : 1234;
         $this->phoneOrEmailVerificationRepo->updateOrCreate(params: ['phone_or_email' => $request['phone']], value: [
             'phone_or_email' => $request['phone'],
             'token' => $token,
@@ -280,7 +280,7 @@ class CustomerAPIAuthController extends Controller
                 ], 403);
             }
 
-            $token = (env('APP_MODE') == 'live') ? rand(100000, 999999) : 123456;
+            $token = (env('APP_MODE') == 'live') ? rand(1000, 9999) : 1234;
 
             $this->phoneOrEmailVerificationRepo->updateOrCreate(params: ['phone_or_email' => $request['email']], value: [
                 'phone_or_email' => $request['email'],
@@ -843,7 +843,7 @@ class CustomerAPIAuthController extends Controller
                 return response()->json(['errors' => $errors], 403);
             }
 
-            $token = (env('APP_MODE') == 'live') ? rand(100000, 999999) : 123456;
+            $token = (env('APP_MODE') == 'live') ? rand(1000, 9999) : 1234;
 
             DB::table('password_resets')->updateOrInsert(['identity' => $request['email_or_phone']], [
                 'token' => $token,

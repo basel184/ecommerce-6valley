@@ -110,21 +110,8 @@
                         ])
                     </div>
                 </div>
-                <div class="col-md-6 col-xl-4">
-                    <div class="card h-100 remove-card-shadow">
-                        @include('admin-views.partials._top-store-by-order', [
-                            'top_store_by_order_received' => $data['top_store_by_order_received'],
-                        ])
-                    </div>
-                </div>
 
-                <div class="col-md-6 col-xl-4">
-                    <div class="card h-100 remove-card-shadow">
-                        @include('admin-views.partials._top-selling-store', [
-                            'topVendorByEarning' => $data['topVendorByEarning'],
-                        ])
-                    </div>
-                </div>
+
 
                 <div class="col-md-6 col-xl-4">
                     <div class="card h-100 remove-card-shadow">
@@ -142,13 +129,7 @@
                     </div>
                 </div>
 
-                <div class="col-md-6 col-xl-4">
-                    <div class="card h-100 remove-card-shadow">
-                        @include('admin-views.partials._top-delivery-man', [
-                            'topRatedDeliveryMan' => $data['topRatedDeliveryMan'],
-                        ])
-                    </div>
-                </div>
+
             </div>
         </div>
     @else

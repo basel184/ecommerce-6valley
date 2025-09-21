@@ -152,12 +152,12 @@ class CartController extends Controller
         $discountType = getProductPriceByType(product: $product, type: 'discount_type', result: 'string');
 
         return [
-            'price' => webCurrencyConverter($price * $requestQuantity),
+            'price' => webCurrencyConverterWithImage($price * $requestQuantity),
             'discount' => $discountType == 'flat' ? webCurrencyConverter($discount) : getProductPriceByType(product: $product, type: 'discount', result: 'value').'%',
             'discount_type' => $discountType,
             'discount_amount' => $discount,
             'tax' => $product['tax_model'] == 'exclude' ? webCurrencyConverter($tax) : 'incl.',
-            'update_tax' => $product['tax_model'] == 'exclude' ? webCurrencyConverter($update_tax) : 'incl.', // for others theme
+            'update_tax' => $product['tax_model'] == 'exclude' ? webCurrencyConverterWithImage($update_tax) : 'incl.', // for others theme
             'quantity' => $product['product_type'] == 'physical' ? $quantity : 100,
             'delivery_cost' => isset($deliveryInfo['delivery_cost']) ? webCurrencyConverter($deliveryInfo['delivery_cost']) : 0,
             'unit_price' => webCurrencyConverter($price), //fashion theme
@@ -201,6 +201,17 @@ class CartController extends Controller
         }
         return response()->json($cart);
 
+    }
+
+    public function getNavCount(): JsonResponse
+    {
+        $cart = CartManager::get_cart();
+        $cart_count = $cart->count();
+        
+        return response()->json([
+            'count' => $cart_count,
+            'success' => true
+        ]);
     }
 
     public function updateNavCart(): JsonResponse

@@ -54,7 +54,7 @@
                                             </del>
                                         @endif
                                         <span class="text-accent fs-18 font-bold text-dark">
-                                    {{ getProductPriceByType(product: $dealOfTheDay?->product, type: 'discounted_unit_price', result: 'string') }}
+                                    {!! getProductPriceByType(product: $dealOfTheDay?->product, type: 'discounted_unit_price', result: 'string_with_image') !!}
                                 </span>
                                     </h4>
                                     <button

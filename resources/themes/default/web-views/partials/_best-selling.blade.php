@@ -66,7 +66,7 @@
                                                 @endif
                                             </span>
                                             <span class="text-accent text-dark">
-                                                {{ getProductPriceByType(product: $bestSellItem, type: 'discounted_unit_price', result: 'string') }}
+                                                {!! getProductPriceByType(product: $bestSellItem, type: 'discounted_unit_price', result: 'string_with_image') !!}
                                             </span>
                                         </h4>
                                     </div>

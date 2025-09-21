@@ -392,7 +392,7 @@ class UserProfileController extends Controller
         }
 
         Toastr::warning(translate('invalid_order'));
-        return redirect()->route('account-oder');
+        return redirect()->route('account-orders');
     }
 
     public function account_order_details_seller_info(Request $request)
@@ -400,7 +400,7 @@ class UserProfileController extends Controller
         $order = $this->order->with(['seller.shop'])->find($request->id);
         if (!$order) {
             Toastr::warning(translate('invalid_order'));
-            return redirect()->route('account-oder');
+            return redirect()->route('account-orders');
         }
 
         $productIds = $this->product->active()->where(['added_by' => $order->seller_is])->where('user_id', $order->seller_id)->pluck('id')->toArray();
@@ -429,7 +429,7 @@ class UserProfileController extends Controller
 
         if (!$order) {
             Toastr::warning(translate('invalid_order'));
-            return redirect()->route('account-oder');
+            return redirect()->route('account-orders');
         }
 
         if (theme_root_path() == 'theme_fashion' || theme_root_path() == 'default') {
@@ -477,7 +477,7 @@ class UserProfileController extends Controller
             return view(VIEW_FILE_NAMES['order_details_review'], compact('order'));
         }
         Toastr::warning(translate('invalid_order'));
-        return redirect()->route('account-oder');
+        return redirect()->route('account-orders');
     }
 
 
@@ -661,7 +661,7 @@ class UserProfileController extends Controller
 
             if (!$orderDetails) {
                 Toastr::warning(translate('invalid_order'));
-                return redirect()->route('account-oder');
+                return redirect()->route('account-orders');
             }
 
             $isOrderOnlyDigital = self::getCheckIsOrderOnlyDigital($orderDetails);
@@ -687,68 +687,20 @@ class UserProfileController extends Controller
     public function track_order_result(Request $request)
     {
         $isOrderOnlyDigital = false;
-        $user = auth('customer')->user();
-        $user_phone = $request['phone_number'] ?? '';
-
-        if (!isset($user)) {
-            $userInfo = User::where('phone', $request['phone_number'])->orWhere('phone', 'like', "%{$request['phone_number']}%")->first();
-            $order = Order::where('id', $request['order_id'])->first();
-
-            if ($order && $order->is_guest) {
-                $orderDetails = Order::with('shippingAddress')
-                    ->where('id', $request['order_id'])
-                    ->first();
-
-                $orderDetails = ($orderDetails && $orderDetails->shippingAddress && $orderDetails->shippingAddress->phone == $request['phone_number']) ? $orderDetails : null;
-
-                if (!$orderDetails) {
-                    $orderDetails = Order::where('id', $request['order_id'])
-                        ->whereHas('billingAddress', function ($query) use ($request) {
-                            $query->where('phone', $request['phone_number']);
-                        })->first();
-                }
-            } elseif ($userInfo) {
-                $orderDetails = Order::where('id', $request['order_id'])->whereHas('details', function ($query) use ($userInfo) {
-                    $query->where('customer_id', $userInfo->id);
-                })->first();
-            } else {
-                Toastr::error(translate('invalid_Order_Id_or_phone_Number'));
-                return redirect()->route('track-order.index', ['order_id' => $request['order_id'], 'phone_number' => $request['phone_number']]);
-            }
-
-        } else {
-            $order = Order::where('id', $request['order_id'])->first();
-            if ($order && $order->is_guest) {
-                $orderDetails = Order::where('id', $request['order_id'])->whereHas('shippingAddress', function ($query) use ($request) {
-                    $query->where('phone', $request['phone_number']);
-                })->first();
-
-            } elseif ($user->phone == $request['phone_number']) {
-                $orderDetails = Order::where('id', $request['order_id'])->whereHas('details', function ($query) {
-                    $query->where('customer_id', auth('customer')->id());
-                })->first();
-            }
-
-            if ($request['from_order_details'] == 1) {
-                $orderDetails = Order::where('id', $request['order_id'])->whereHas('details', function ($query) {
-                    $query->where('customer_id', auth('customer')->id());
-                })->first();
-            }
-        }
-
+        $order = Order::where('id', $request['order_id'])->first();
         $order_verification_status = getWebConfig(name: 'order_verification');
 
-        if (isset($orderDetails)) {
-            if ($orderDetails['order_type'] == 'POS') {
-                Toastr::error(translate('this_order_is_created_by_') . ($orderDetails['seller_is'] == 'seller' ? 'vendor' : 'admin') . translate('_from POS') . ',' . translate('please_contact_with_') . ($orderDetails['seller_is'] == 'seller' ? 'vendor' : 'admin') . translate('_to_know_more_details') . '.');
+        if ($order) {
+            if ($order['order_type'] == 'POS') {
+                Toastr::error(translate('this_order_is_created_by_') . ($order['seller_is'] == 'seller' ? 'vendor' : 'admin') . translate('_from POS') . ',' . translate('please_contact_with_') . ($order['seller_is'] == 'seller' ? 'vendor' : 'admin') . translate('_to_know_more_details') . '.');
                 return redirect()->back();
             }
-            $isOrderOnlyDigital = self::getCheckIsOrderOnlyDigital($orderDetails);
-            return view(VIEW_FILE_NAMES['track_order'], compact('orderDetails', 'user_phone', 'order_verification_status', 'isOrderOnlyDigital'));
+            $isOrderOnlyDigital = self::getCheckIsOrderOnlyDigital($order);
+            return view(VIEW_FILE_NAMES['track_order'], compact('order', 'order_verification_status', 'isOrderOnlyDigital'));
         }
 
-        Toastr::error(translate('invalid_Order_Id_or_phone_Number'));
-        return redirect()->route('track-order.index', ['order_id' => $request['order_id'], 'phone_number' => $request['phone_number']]);
+        Toastr::error(translate('invalid_Order_Id'));
+        return redirect()->route('track-order.index', ['order_id' => $request['order_id']]);
     }
 
     public function track_last_order()

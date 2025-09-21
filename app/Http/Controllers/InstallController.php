@@ -15,7 +15,7 @@ use App\Utils\Helpers;
 use App\Models\ShippingType;
 use App\Models\BusinessSetting;
 use App\Models\NotificationMessage;
-
+use App\Traits\ActivationClass;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\URL;
 
 class InstallController extends Controller
 {
-    use EmailTemplateTrait, SettingsTrait, UpdateClass;
+    use ActivationClass, EmailTemplateTrait, SettingsTrait, UpdateClass;
 
     public function step0()
     {
@@ -78,8 +78,20 @@ class InstallController extends Controller
 
     public function purchase_code(Request $request)
     {
-        // Skip license verification - proceed directly to step 3
-        return redirect('step3' . '?token=' . bcrypt('step_3'));
+        Helpers::setEnvironmentValue('SOFTWARE_ID', 'MzE0NDg1OTc=');
+        Helpers::setEnvironmentValue('BUYER_USERNAME', $request['username']);
+        Helpers::setEnvironmentValue('PURCHASE_CODE', $request['purchase_key']);
+
+        $post = [
+            'name' => $request['name'],
+            'email' => $request['email'],
+            'username' => $request['username'],
+            'purchase_key' => $request['purchase_key'],
+            'domain' => preg_replace("#^[^:/.]*[:/]+#i", "", url('/')),
+        ];
+        $response = $this->dmvf($post);
+
+        return redirect($response . '?token=' . bcrypt('step_3'));
     }
 
     public function system_settings(Request $request)
@@ -440,6 +452,10 @@ class InstallController extends Controller
                     PUSHER_APP_KEY=
                     PUSHER_APP_SECRET=
                     PUSHER_APP_CLUSTER=mt1
+
+                    PURCHASE_CODE=' . session('purchase_key') . '
+                    BUYER_USERNAME=' . session('username') . '
+                    SOFTWARE_ID=MzE0NDg1OTc=
 
                     SOFTWARE_VERSION=' . SOFTWARE_VERSION . '
                     ';

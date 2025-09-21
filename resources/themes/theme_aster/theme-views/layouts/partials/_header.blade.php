@@ -635,7 +635,7 @@
                                     </span>
                                 </button>
                                 <ul class="dropdown-menu bs-dropdown-min-width--10rem header-dropdown">
-                                    <li><a href="{{route('account-oder')}}">{{ translate('My_Order') }}</a></li>
+                                    <li><a href="{{route('account-orders')}}">{{ translate('My_Order') }}</a></li>
                                     <li><a href="{{route('user-profile')}}">{{ translate('My_Profile') }}</a></li>
                                     <li><a href="{{route('customer.auth.logout')}}">{{ translate('Logout') }}</a></li>
                                 </ul>

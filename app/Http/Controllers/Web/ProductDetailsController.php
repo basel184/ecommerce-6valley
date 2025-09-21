@@ -446,7 +446,6 @@ class ProductDetailsController extends Controller
             );
 
             $productsLatest = $this->productRepo->getWebListWithScope(
-                orderBy: ['id' => 'DESC'],
                 scope: 'active',
                 filters: ['category_id' => $product['category_id'], 'customer_id' => Auth::guard('customer')->user()->id ?? 0],
                 whereNotIn: ['id' => [$product['id']]],
@@ -454,6 +453,8 @@ class ProductDetailsController extends Controller
                 dataLimit: 12,
                 offset: 1
             );
+            // ترتيب عشوائي للمنتجات
+            $productsLatest = $productsLatest->shuffle();
 
             $previewFileInfo = getFileInfoFromURL(url: $product?->preview_file_full_url['path']);
 

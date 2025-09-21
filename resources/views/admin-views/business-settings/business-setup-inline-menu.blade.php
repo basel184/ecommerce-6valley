@@ -13,51 +13,15 @@
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link {{ Request::is('admin/business-settings/vendor-settings') ? 'active' : '' }}"
-                href="{{ route('admin.business-settings.vendor-settings.index') }}">
-                {{ translate('Vendors') }}
-            </a>
-        </li>
-        <li class="nav-item">
             <a class="nav-link {{ Request::is('admin/business-settings/product-settings') ? 'active' : '' }}"
                 href="{{ route('admin.business-settings.product-settings.index') }}">
                 {{ translate('Products') }}
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link {{ Request::is('admin/business-settings/delivery-man-settings') ? 'active' : '' }}"
-                href="{{ route('admin.business-settings.delivery-man-settings.index') }}">
-                {{ translate('Delivery_Men') }}
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link {{ Request::is('admin/business-settings/customer-settings') ? 'active' : '' }}"
-                href="{{ route('admin.business-settings.customer-settings') }}">
-                {{ translate('Customer') }}
-            </a>
-        </li>
-        <li class="nav-item">
             <a class="nav-link {{ Request::is('admin/business-settings/order-settings/index') ? 'active' : '' }}"
                 href="{{ route('admin.business-settings.order-settings.index') }}">
                 {{ translate('Orders') }}
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link {{ Request::is('admin/business-settings/refund-setup') ? 'active' : '' }}"
-            href="{{ route('admin.business-settings.refund-setup') }}">
-                {{ translate('Refund') }}
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link {{ Request::is('admin/business-settings/shipping-method/index') ? 'active' : '' }}"
-                href="{{ route('admin.business-settings.shipping-method.index') }}">
-                {{ translate('Shipping_Method') }}
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link {{ Request::is('admin/business-settings/delivery-restriction') ? 'active' : '' }}"
-                href="{{ route('admin.business-settings.delivery-restriction.index') }}">
-                {{ translate('Delivery_Restriction') }}
             </a>
         </li>
         <li class="nav-item">

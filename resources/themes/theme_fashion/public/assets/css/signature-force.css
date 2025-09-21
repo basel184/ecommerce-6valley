@@ -1,0 +1,129 @@
+/* Force Signature Slider Auto-movement */
+
+/* Ensure slider container has proper styling */
+.signature-products-slider-wrapper {
+    position: relative;
+    overflow: hidden;
+}
+
+.signature-products-slider {
+    width: 100% !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Force owl carousel styling */
+.signature-products-slider.owl-carousel {
+    display: block !important;
+}
+
+.signature-products-slider .owl-stage-outer {
+    overflow: hidden !important;
+}
+
+.signature-products-slider .owl-stage {
+    display: flex !important;
+    align-items: center !important;
+}
+
+.signature-products-slider .owl-item {
+    min-height: 1px !important;
+    float: none !important;
+    display: block !important;
+}
+
+/* Navigation arrows */
+.signature-products-slider .owl-nav {
+    display: block !important;
+    text-align: center;
+    margin-top: 10px;
+}
+
+.signature-products-slider .owl-nav button {
+    background: #007bff !important;
+    color: white !important;
+    border: none !important;
+    padding: 10px 15px !important;
+    margin: 0 5px !important;
+    border-radius: 5px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+}
+
+.signature-products-slider .owl-nav button:hover {
+    background: #0056b3 !important;
+    transform: scale(1.1) !important;
+}
+
+/* Dots */
+.signature-products-slider .owl-dots {
+    text-align: center !important;
+    margin-top: 15px !important;
+}
+
+.signature-products-slider .owl-dots .owl-dot {
+    display: inline-block !important;
+    margin: 0 5px !important;
+}
+
+.signature-products-slider .owl-dots .owl-dot span {
+    width: 12px !important;
+    height: 12px !important;
+    border-radius: 50% !important;
+    background: #ddd !important;
+    display: block !important;
+    transition: all 0.3s ease !important;
+}
+
+.signature-products-slider .owl-dots .owl-dot.active span {
+    background: #007bff !important;
+    transform: scale(1.3) !important;
+}
+
+/* Animation classes */
+.signature-products-slider .owl-item {
+    transform: translateX(0) !important;
+    transition: transform 0.5s ease !important;
+}
+
+/* Ensure smooth transitions */
+.signature-products-slider.owl-drag .owl-item {
+    -webkit-transform-style: preserve-3d !important;
+    transform-style: preserve-3d !important;
+}
+
+/* Loading indicator */
+.signature-products-slider-loading {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+}
+
+.signature-products-slider-loading::after {
+    content: "جاري تحميل السلايدر...";
+}
+
+/* Force visibility */
+.signature-product {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .signature-products-slider .owl-nav {
+        display: none !important;
+    }
+}
+
+/* Auto-play indicator */
+.signature-products-slider.autoplay-active::before {
+    content: "▶️ يتحرك تلقائياً";
+    position: absolute;
+    top: -30px;
+    left: 0;
+    font-size: 12px;
+    color: #28a745;
+    z-index: 10;
+}

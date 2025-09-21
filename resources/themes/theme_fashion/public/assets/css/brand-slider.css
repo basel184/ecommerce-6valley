@@ -1,0 +1,168 @@
+
+
+.creams-sliders3 {
+    display: flex;
+    overflow-x: auto;
+    gap: 15px;
+    padding: 20px 0;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #007bff #f1f1f1;
+    cursor: grab;
+}
+
+.creams-sliders3:active {
+    cursor: grabbing;
+}
+
+.creams-sliders3::-webkit-scrollbar {
+    height: 6px;
+}
+
+.creams-sliders3::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.creams-sliders3::-webkit-scrollbar-thumb {
+    background: #007bff;
+    border-radius: 10px;
+    transition: background 0.3s ease;
+}
+
+.creams-sliders3::-webkit-scrollbar-thumb:hover {
+    background: #0056b3;
+}
+
+.creams-sliders3 > div {
+    flex: 0 0 auto;
+    min-width: 200px;
+    max-width: 250px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background: #fff;
+}
+
+.creams-sliders3 > div:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.creams-sliders3 a {
+    display: block;
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.creams-sliders3 img {
+    width: 100%;
+    height: auto;
+    min-height: 120px;
+    max-height: 180px;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+}
+
+.creams-sliders3 img.loaded {
+    opacity: 1;
+}
+
+.creams-sliders3 img.error {
+    opacity: 0.5;
+    filter: grayscale(100%);
+}
+
+.creams-sliders3 a:hover img {
+    transform: scale(1.1);
+}
+
+
+.brand-slider-title {
+    text-align: center;
+    font-size: 28px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 25px;
+    position: relative;
+}
+
+.brand-slider-title::after {
+    content: '';
+    display: block;
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    margin: 10px auto 0;
+    border-radius: 2px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .creams-sliders3 > div {
+        min-width: 100px;
+        max-width: 100px;
+        width: 100px;
+        height: 100px;
+    }
+    
+    .creams-sliders3 {
+        gap: 10px;
+        padding: 15px 0;
+    }
+    
+    .brand-slider-title {
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 480px) {
+    .creams-sliders3 > div {
+        min-width: 100px;
+        max-width: 100px;
+        width: 100px;
+        height: 100px;
+    }
+    
+    .creams-sliders3 {
+        gap: 8px;
+    }
+    
+
+}
+
+/* Animation for scroll indication */
+@keyframes scrollHint {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(10px); }
+}
+
+.creams-sliders3::after {
+    content: '←';
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    color: #007bff;
+    animation: scrollHint 2s infinite;
+    pointer-events: none;
+}
+
+/* RTL Support */
+[dir="rtl"] .creams-sliders3::after {
+    content: '→';
+    right: auto;
+    left: 20px;
+    animation-name: scrollHintRTL;
+}
+
+@keyframes scrollHintRTL {
+    0%, 100% { transform: translateY(-50%) translateX(0); }
+    50% { transform: translateY(-50%) translateX(-10px); }
+}

@@ -106,3 +106,7 @@ Route::post('aws-upload', function (Request $request) {
         DB::table('orders')->insert($chunk->toArray());
     }
 });*/
+
+Route::get('/test-products-debug', function () {
+    return "Products route is working! Offer type: " . request('offer_type', 'none') . ", Page: " . request('page', 1);
+});

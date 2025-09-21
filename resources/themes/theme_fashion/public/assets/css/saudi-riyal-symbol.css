@@ -1,0 +1,41 @@
+/* Custom Saudi Riyal Symbol CSS */
+.saudi-riyal-symbol {
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    background-image: url('../img/saudi-riyal-symbol.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    vertical-align: middle;
+    margin: 0 2px;
+}
+
+.saudi-riyal-symbol-large {
+    width: 20px;
+    height: 20px;
+}
+
+.saudi-riyal-symbol-small {
+    width: 14px;
+    height: 14px;
+}
+
+/* Price display improvements */
+.price .saudi-riyal-symbol {
+    margin-right: 4px;
+}
+
+[dir="rtl"] .price .saudi-riyal-symbol {
+    margin-left: 4px;
+    margin-right: 0;
+}
+
+/* Ensure proper alignment in different contexts */
+.product-single-pricing .saudi-riyal-symbol {
+    vertical-align: baseline;
+}
+
+.cart-item-price .saudi-riyal-symbol {
+    vertical-align: middle;
+}

@@ -1,0 +1,217 @@
+/* Custom GIF Banners Styles - Enhanced Version */
+.gif-banner-wrapper {
+    position: relative;
+    overflow: hidden;
+    border-radius: 15px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 8px;
+    margin-bottom: 20px;
+}
+
+.gif-banner-wrapper:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+}
+
+.gif-banner {
+    width: 100%;
+    height: auto;
+    min-height: 200px;
+    max-height: 350px;
+    object-fit: cover;
+    border-radius: 10px;
+    transition: all 0.4s ease;
+    filter: brightness(1) contrast(1.05);
+}
+
+.gif-banner:hover {
+    filter: brightness(1.1) contrast(1.1);
+}
+
+/* Loading states */
+.gif-banner-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    background: linear-gradient(45deg, 
+        rgba(255,255,255,0.1) 25%, 
+        transparent 25%, 
+        transparent 50%, 
+        rgba(255,255,255,0.1) 50%, 
+        rgba(255,255,255,0.1) 75%, 
+        transparent 75%);
+    background-size: 20px 20px;
+    animation: shimmer 1.5s infinite;
+    border-radius: 10px;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+@keyframes shimmer {
+    0% { background-position: -20px 0; }
+    100% { background-position: 20px 0; }
+}
+
+/* Responsive design improvements */
+@media (max-width: 992px) {
+    .gif-banner {
+        max-height: 280px;
+        min-height: 180px;
+    }
+}
+
+@media (max-width: 768px) {
+    .gif-banner-wrapper {
+        margin-bottom: 15px;
+        padding: 6px;
+        border-radius: 12px;
+    }
+    
+    .gif-banner {
+        max-height: 220px;
+        min-height: 160px;
+        border-radius: 8px;
+    }
+    
+    .gif-banner-wrapper:hover {
+        transform: translateY(-4px) scale(1.01);
+    }
+}
+
+@media (max-width: 576px) {
+    .gif-banner {
+        max-height: 200px;
+        min-height: 140px;
+    }
+    
+    .gif-banner-wrapper {
+        margin-bottom: 12px;
+    }
+}
+
+/* Enhanced animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes bounceIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.3) translateY(50px);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.05) translateY(-10px);
+    }
+    70% {
+        transform: scale(0.9) translateY(0);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.gif-banner-wrapper {
+    animation: fadeInUp 0.8s ease forwards;
+    opacity: 0;
+}
+
+.gif-banner-wrapper:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.gif-banner-wrapper:nth-child(2) {
+    animation-delay: 0.3s;
+}
+
+/* Intersection observer class */
+.gif-banner-visible {
+    animation: bounceIn 0.6s ease forwards;
+}
+
+/* Focus states for accessibility */
+.gif-banner:focus {
+    outline: 3px solid rgba(0, 123, 255, 0.5);
+    outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+    .gif-banner-wrapper {
+        page-break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+}
+
+/* Additional spacing for multiple rows */
+.gif-banner-wrapper:nth-child(1),
+.gif-banner-wrapper:nth-child(2) {
+    margin-bottom: 15px;
+}
+
+/* Staggered animation for multiple banners */
+.gif-banner-wrapper:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.gif-banner-wrapper:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.gif-banner-wrapper:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.gif-banner-wrapper:nth-child(4) {
+    animation-delay: 0.3s;
+}
+
+/* Enhanced loading state for all banners */
+.gif-banner-wrapper.loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.gif-banner-wrapper.loading::after {
+    content: 'جاري التحميل...';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 14px;
+    color: #666;
+}
+
+/* Better spacing for container */
+.container .row.g-3.mt-3 {
+    margin-top: 0.5rem !important;
+}
+
+/* Responsive improvements for 4 banners */
+@media (max-width: 768px) {
+    .gif-banner-wrapper {
+        margin-bottom: 15px;
+    }
+    
+    .container .row.g-3.mt-3 {
+        margin-top: 0.75rem !important;
+    }
+}

@@ -1,0 +1,265 @@
+/* Section title styles */
+.section-title {
+    font-size: 32px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 10px;
+    position: relative;
+}
+
+.section-title::after {
+    content: '';
+    display: block;
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    margin: 15px auto 0;
+    border-radius: 2px;
+}
+
+.section-subtitle {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+@media (max-width: 768px) {
+    .section-title {
+        font-size: 24px;
+    }
+    
+    .section-subtitle {
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+}
+
+/* Promotional Banners Styles */
+.promotion-item {
+    position: relative;
+    overflow: hidden;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    background: #fff;
+    margin-bottom: 20px;
+}
+
+.promotion-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.promotion-container {
+    position: relative;
+    overflow: hidden;
+    display: block;
+    text-decoration: none;
+    color: inherit;
+}
+
+.promotion-container:hover {
+    text-decoration: none;
+    color: inherit;
+}
+
+.promotion-image {
+    position: relative;
+    overflow: hidden;
+}
+
+.promotion-image img {
+    width: 100%;
+    height: auto;
+    transition: transform 0.3s ease;
+    display: block;
+}
+
+.promotion-item:hover .promotion-image img {
+    transform: scale(1.05);
+}
+
+.slide-content-link {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.3);
+    color: white;
+    text-decoration: none;
+    opacity: 0;
+    transition: all 0.3s ease;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.slide-content-link:hover {
+    color: white;
+    text-decoration: none;
+}
+
+.promotion-item:hover .slide-content-link {
+    opacity: 1;
+}
+
+.slide-content-link span {
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    padding: 12px 25px;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.slide-content-link:hover span {
+    background: #007bff;
+    color: white;
+    transform: scale(1.1);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .promotion-item {
+        margin-bottom: 15px;
+    }
+    
+    .slide-content-link {
+        font-size: 16px;
+        opacity: 1; /* Always show on mobile */
+        background: rgba(0, 0, 0, 0.4);
+    }
+    
+    .slide-content-link span {
+        padding: 10px 20px;
+        font-size: 14px;
+        background: rgba(255, 255, 255, 0.95);
+    }
+    
+    /* Show overlay on mobile by default */
+    .promotion-item .slide-content-link {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 480px) {
+    .promotion-item {
+        border-radius: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .slide-content-link {
+        font-size: 14px;
+    }
+    
+    .slide-content-link span {
+        padding: 8px 16px;
+        font-size: 12px;
+    }
+    
+    /* Adjust container margins */
+    .container.mt-4 {
+        margin-top: 1rem !important;
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+}
+
+/* Animation for entrance */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.promotion-item {
+    animation: fadeInUp 0.6s ease forwards;
+}
+
+.promotion-item:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.promotion-item:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.promotion-item:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+/* RTL Support */
+[dir="rtl"] .slide-content-link span {
+    font-family: 'Arial', sans-serif;
+}
+
+/* Loading state */
+.promotion-image img {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.promotion-image img.loaded {
+    opacity: 1;
+}
+
+/* Loading skeleton animation */
+.promotion-image img:not(.loaded) {
+    background: linear-gradient(90deg, #f0f0f0 25%, transparent 37%, #f0f0f0 63%);
+    background-size: 400% 100%;
+    animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: -100% 50%;
+    }
+}
+
+/* Focus states for accessibility */
+.slide-content-link:focus {
+    outline: 3px solid rgba(0, 123, 255, 0.5);
+    outline-offset: 2px;
+}
+
+.slide-content-link:focus span {
+    background: #007bff;
+    color: white;
+}
+
+/* Print styles */
+@media print {
+    .promotion-item {
+        page-break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+    
+    .slide-content-link {
+        display: none;
+    }
+}
+
+/* Better hover states for desktop */
+@media (min-width: 769px) {
+    .promotion-item:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    }
+    
+    .promotion-item:hover .slide-content-link span {
+        transform: scale(1.15);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+}

@@ -67,6 +67,7 @@ class EventServiceProvider extends ServiceProvider
         ],
         OrderPlacedEvent::class => [
             OrderPlacedListener::class,
+            \App\Listeners\CreateTryotoShipment::class,
         ],
         OrderStatusEvent::class => [
             OrderStatusListener::class,

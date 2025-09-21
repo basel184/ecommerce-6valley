@@ -28,12 +28,12 @@
                                             </button>
                                             <ul class="dropdown-menu dropdown-menu-end">
                                                 <li>
-                                                    <a class="d-flex" href="{{route('account-oder')}}/?order_by=desc">
+                                                    <a class="d-flex" href="{{route('account-orders')}}/?order_by=desc">
                                                         {{translate('latest')}}
                                                     </a>
                                                 </li>
                                                 <li>
-                                                    <a class="d-flex" href="{{route('account-oder')}}/?order_by=asc">
+                                                    <a class="d-flex" href="{{route('account-orders')}}/?order_by=asc">
                                                         {{translate('old')}}
                                                     </a>
                                                 </li>

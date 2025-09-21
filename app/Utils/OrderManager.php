@@ -555,7 +555,7 @@ class OrderManager
         }
         $or = [
             'id' => $order_id,
-            'verification_code' => rand(100000, 999999),
+            'verification_code' => rand(1000, 9999),
             'customer_id' => $getCustomerID,
             'is_guest' => $isGuestUserInOrder,
             'seller_id' => $seller_data->seller_id,
@@ -1003,7 +1003,7 @@ class OrderManager
         //order data insert start
         $or = [
             'id' => $order_data['order_id'],
-            'verification_code' => rand(100000, 999999),
+            'verification_code' => rand(1000, 9999),
             'customer_id' => $order_data['user_id'],
             'seller_id' => $order_data['seller_id'],
             'seller_is' => $order_data['seller_is'],

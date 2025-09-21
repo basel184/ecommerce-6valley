@@ -39,9 +39,40 @@
                         </div>
 
                         <div class="bg-section rounded-8 p-12 p-sm-20">
-                            <div class="alert alert-info">
-                                <h6 class="mb-2">{{ translate('License Requirements Removed') }}</h6>
-                                <p class="mb-0">{{ translate('This software installation no longer requires license verification for updates.') }}</p>
+                            <div class="row g-4">
+                                <div class="col-lg-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="username">
+                                            {{ translate('codecanyon_username') }}
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="username"
+                                               placeholder="{{translate('ex').':'.'2.1'}}"
+                                               value="{{ env('BUYER_USERNAME') }}" name="username" required
+                                               readonly
+                                               data-bs-toggle="tooltip"
+                                               data-bs-placement="top"
+                                               aria-label="{{ translate('This field is read only mode.') }}"
+                                               data-bs-title="{{ translate('This field is read only mode.') }}"
+                                        >
+                                    </div>
+                                </div>
+                                <div class="col-lg-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="purchase_key">
+                                            {{ translate('purchase_code') }}
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="purchase_key"
+                                               value="{{env('PURCHASE_CODE')}}" name="purchase_key" required
+                                               readonly
+                                               data-bs-toggle="tooltip"
+                                               data-bs-placement="top"
+                                               aria-label="{{ translate('This field is read only mode.') }}"
+                                               data-bs-title="{{ translate('This field is read only mode.') }}"
+                                        >
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

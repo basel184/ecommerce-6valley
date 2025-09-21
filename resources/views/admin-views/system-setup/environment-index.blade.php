@@ -213,9 +213,29 @@
 
                                     <div class="col-xl-4 col-md-6">
                                         <div class="form-group">
-                                            <label class="form-label text-capitalize" for="">{{ translate('License Status') }}</label>
-                                            <div class="alert alert-success mb-0">
-                                                <small>{{ translate('No license verification required') }}</small>
+                                            <label class="form-label text-capitalize" for="">{{ translate('buyer_username') }}</label>
+                                            <input type="text" value="{{ env('BUYER_USERNAME') }}" class="form-control"
+                                                placeholder="{{ translate('6valley-admin-demo-jhisdfhisufjifjfijqw5467') }}"
+                                                readonly
+                                                data-bs-toggle="tooltip"
+                                                data-bs-placement="top"
+                                                aria-label="{{ translate('this_field_is_read_only_mode.') }}"
+                                                data-bs-title="{{ translate('this_field_is_read_only_mode.') }}"
+                                                >
+                                        </div>
+                                    </div>
+                                    <div class="col-xl-4 col-md-6">
+                                        <div class="form-group">
+                                            <label class="form-label text-capitalize" for="">{{ translate('purchase_code') }}</label>
+                                            <div class="input-icons">
+                                                <input type="password" value="{{ env('PURCHASE_CODE') }}" class="form-control"
+                                                    id="purchase_code" placeholder="{{ translate('00000000000000') }}"
+                                                    readonly
+                                                    data-bs-toggle="tooltip"
+                                                    data-bs-placement="top"
+                                                    aria-label="{{ translate('this_field_is_read_only_mode.') }}"
+                                                    data-bs-title="{{ translate('this_field_is_read_only_mode.') }}"
+                                                    >
                                             </div>
                                         </div>
                                     </div>

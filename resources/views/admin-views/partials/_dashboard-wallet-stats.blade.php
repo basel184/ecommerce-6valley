@@ -1,9 +1,9 @@
 <div class="col-lg-4">
     <div class="card border h-100 d-flex justify-content-center align-items-center">
-        <div class="card-body d-flex flex-column gap-10 align-items-center justify-content-center">
+        <div class="card-body d-flex gap-10 align-items-center justify-content-center">
             <img width="48" class="mb-2" src="{{dynamicAsset(path: 'public/assets/back-end/img/inhouse-earning.png')}}" alt="">
             <h3 class="for-card-count mb-0 fz-24">{{setCurrencySymbol(amount: usdToDefaultCurrency(amount: $data['inhouse_earning']), currencyCode: getCurrencyCode())}}</h3>
-            <div class="text-capitalize fs-12 mb-30">
+            <div class="text-capitalize fs-12">
                 {{translate('in-house_earning')}}
             </div>
         </div>
@@ -11,20 +11,7 @@
 </div>
 <div class="col-lg-8">
     <div class="row g-2">
-        <div class="col-md-6">
-            <div class="card border card-body h-100 justify-content-center">
-                <div class="d-flex gap-2 justify-content-between align-items-center">
-                    <div class="d-flex flex-column align-items-start">
-                        <h3 class="mb-1 fz-24">{{setCurrencySymbol(amount: usdToDefaultCurrency(amount: $data['commission_earned']), currencyCode: getCurrencyCode())}}</h3>
-                        <div class="text-capitalize mb-0 fs-12">{{translate('commission_earned')}}</div>
-                    </div>
-                    <div>
-                        <img width="40" class="mb-2" src="{{dynamicAsset(path: 'public/assets/back-end/img/ce.png')}}" alt="">
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card border card-body h-100 justify-content-center">
                 <div class="d-flex gap-2 justify-content-between align-items-center">
                     <div class="d-flex flex-column align-items-start">
@@ -37,7 +24,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card border card-body h-100 justify-content-center">
                 <div class="d-flex gap-2 justify-content-between align-items-center">
                     <div class="d-flex flex-column align-items-start">
@@ -50,7 +37,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card border card-body h-100 justify-content-center">
                 <div class="d-flex gap-2 justify-content-between align-items-center">
                     <div class="d-flex flex-column align-items-start">

@@ -17,7 +17,7 @@ if (!function_exists('getStorageImages')) {
     {
         $path = is_array($path) ? $path : (array)$path;
         if ($source && base_path($source)) {
-            if ($type == 'payment-banner' && DOMAIN_POINTED_DIRECTORY == 'public') {
+            if ($type == 'payment-banner' && defined('DOMAIN_POINTED_DIRECTORY') && DOMAIN_POINTED_DIRECTORY == 'public') {
                 return asset(str_replace('app/public/', '', $source));
             }
             return (!empty($path) && $path['status'] == 200) ? $path['path'] : dynamicAsset($source);
@@ -107,7 +107,7 @@ if (!function_exists('getStorageImages')) {
 if (!function_exists('dynamicAsset')) {
     function dynamicAsset(string $path): string
     {
-        if (DOMAIN_POINTED_DIRECTORY == 'public') {
+        if (defined('DOMAIN_POINTED_DIRECTORY') && DOMAIN_POINTED_DIRECTORY == 'public') {
             $position = strpos($path, 'public/');
             $result = $path;
             if ($position === 0) {
@@ -123,7 +123,7 @@ if (!function_exists('dynamicAsset')) {
 if (!function_exists('dynamicStorage')) {
     function dynamicStorage(string $path): string
     {
-        if (DOMAIN_POINTED_DIRECTORY == 'public') {
+        if (defined('DOMAIN_POINTED_DIRECTORY') && DOMAIN_POINTED_DIRECTORY == 'public') {
             $result = str_replace('storage/app/public', 'storage', $path);
         } else {
             $result = $path;
@@ -135,7 +135,7 @@ if (!function_exists('dynamicStorage')) {
 if (!function_exists('getValidImage')) {
     function getValidImage($path, $type = null, $source = null): string
     {
-        if (DOMAIN_POINTED_DIRECTORY == 'public') {
+        if (defined('DOMAIN_POINTED_DIRECTORY') && DOMAIN_POINTED_DIRECTORY == 'public') {
             $path = str_replace('storage/app/public', 'storage', $path);
         }
 

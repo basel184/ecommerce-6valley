@@ -1,0 +1,127 @@
+/* RTL Banner Section Styles */
+.rtl-banner {
+    direction: rtl;
+}
+
+.rtl-banner .banner-slide {
+    flex-direction: row-reverse;
+}
+
+.rtl-banner .banner-slide .content {
+    text-align: right;
+}
+
+.rtl-banner .rtl-content {
+    margin-right: 0;
+    margin-left: auto;
+}
+
+.rtl-banner .rtl-title {
+    text-align: right;
+}
+
+.rtl-banner .rtl-shapes {
+    left: calc(100% - 1px);
+    right: unset;
+    transform: translateY(-50%) scaleX(-1);
+}
+
+.rtl-banner .rtl-arrow {
+    right: unset;
+    left: -10px;
+    transform: translateY(-50%) rotate(180deg);
+}
+
+/* RTL Media Queries */
+@media (max-width: 1199px) {
+    .rtl-banner .banner-slider .owl-stage .owl-item .banner-slide .rtl-shapes {
+        position: absolute;
+        right: calc(100% - 1px);
+        left: unset;
+        top: 50%;
+        transform: translateY(-50%) scaleX(-1);
+        z-index: 9;
+    }
+}
+
+@media screen and (max-width: 575px) {
+    .rtl-banner .banner-slider .owl-stage .owl-item.active:where(:last-child).selected-item .banner-slide .rtl-arrow {
+        left: unset;
+        right: -10px;
+        transform: translateY(-50%);
+    }
+    
+    .rtl-banner .banner-slider .owl-stage .owl-item.active:where(:last-child).selected-item .banner-slide .rtl-shapes {
+        left: calc(100% - 1px);
+        right: unset;
+        transform: translateY(-50%) scaleX(-1);
+    }
+}
+
+/* RTL Text Direction */
+.rtl-banner .banner-slide .content .title,
+.rtl-banner .banner-slide .content .info {
+    direction: rtl;
+    text-align: right;
+}
+
+.rtl-banner .banner-slide .content .btn-base {
+    direction: rtl;
+}
+
+/* RTL Image positioning */
+.rtl-banner .banner-slider .owl-stage .owl-item:not(.selected-item) .banner-slide img {
+    transform: translate(60%, -50%);
+}
+
+/* Additional RTL improvements */
+.rtl-banner .banner-slide .content .title {
+    font-family: inherit;
+    line-height: 1.4;
+}
+
+.rtl-banner .banner-slide .content .info .btn-base {
+    margin-right: 0;
+    margin-left: auto;
+}
+
+/* RTL Owl Carousel adjustments */
+.rtl-banner .owl-carousel .owl-nav .owl-prev,
+.rtl-banner .owl-carousel .owl-nav .owl-next {
+    transform: scaleX(-1);
+}
+
+.rtl-banner .owl-carousel .owl-nav .owl-prev {
+    right: 0;
+    left: unset;
+}
+
+.rtl-banner .owl-carousel .owl-nav .owl-next {
+    left: 0;
+    right: unset;
+}
+
+/* Description Tab Styles */
+.description-information {
+    padding: 20px;
+    line-height: 1.6;
+    font-size: 14px;
+    color: #333;
+}
+
+.description-information p {
+    margin-bottom: 15px;
+}
+
+.description-information p:last-child {
+    margin-bottom: 0;
+}
+
+/* RTL Support for Description */
+[dir="rtl"] .description-information {
+    text-align: right;
+}
+
+[dir="rtl"] .description-information p {
+    text-align: right;
+}

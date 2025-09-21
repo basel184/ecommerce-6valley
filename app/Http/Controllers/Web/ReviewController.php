@@ -27,15 +27,24 @@ class ReviewController extends Controller
     public function add(Request $request): RedirectResponse
     {
         $request->validate([
+            'product_id' => 'required|integer|exists:products,id',
             'rating' => 'required',
             'comment' => 'required',
         ], [
+            'product_id.required' => translate('invalid_product') . '!',
             'rating.required' => translate('please_rate_the_quality') . '!',
             'comment.required' => translate('The_comment_is_required') . '!',
         ]);
 
         $imageArray = [];
-        $review = $this->reviewRepo->getFirstWhere(params: ['customer_id' => auth('customer')->id(), 'id' => $request['review_id']]);
+        // If editing an existing review by this customer
+        $review = null;
+        if ($request->filled('review_id')) {
+            $review = $this->reviewRepo->getFirstWhere(params: [
+                'customer_id' => auth('customer')->id(),
+                'id' => $request['review_id']
+            ]);
+        }
         if ($review && $review['attachment']) {
             foreach ($review['attachment'] as $image) {
                 $imageArray[] = $image;
@@ -50,22 +59,13 @@ class ReviewController extends Controller
                 ];
             }
         }
-        if ($request['review_id']) {
-            $review_id = $request['review_id'];
-        } else {
-            $oldReview = $this->reviewRepo->getListWhere(orderBy: ['id' => 'desc'], filters: ['order_id' => $request['order_id']]);
-            if (count($oldReview) > 0) {
-                $review_id = $oldReview[0]['order_id'] . (count($oldReview) + 1);
-            } else {
-                $review_id = $request['order_id'] . '1';
-            }
-        }
+        // order_id is optional now; allow comments without a purchase
+        $orderId = $request->input('order_id');
 
         $dataArray = [
-            'id' => $review_id,
             'customer_id' => auth('customer')->id(),
             'product_id' => $request['product_id'],
-            'order_id' => $request['order_id'],
+            'order_id' => $orderId,
             'comment' => $request['comment'],
             'rating' => $request['rating'],
             'attachment' => $request->has('fileUpload') ? $imageArray : ($review->attachment ?? null),
@@ -73,10 +73,20 @@ class ReviewController extends Controller
             'created_at' => $review->created_at ?? now()
         ];
 
-        if ($request['review_id']) {
+        if ($request->filled('review_id') && $review) {
             $this->reviewRepo->update(id: $request['review_id'], data: $dataArray);
         } else {
-            $this->reviewRepo->add(data: $dataArray);
+            // prevent duplicate review rows per customer-product if needed
+            $existing = $this->reviewRepo->getFirstWhere(params: [
+                'customer_id' => auth('customer')->id(),
+                'product_id' => $request['product_id'],
+                'order_id' => $orderId
+            ]);
+            if ($existing) {
+                $this->reviewRepo->update(id: (string)$existing->id, data: $dataArray);
+            } else {
+                $this->reviewRepo->add(data: $dataArray);
+            }
         }
 
         Toastr::success(translate('successfully_added_review'));

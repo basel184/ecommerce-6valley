@@ -26,74 +26,9 @@
                     <div class="p-12 p-sm-20 bg-section rounded">
                         <div class="row g-4">
                             @php($orderVerification = getWebConfig('order_verification'))
-                            <div class="col-xl-6 col-md-6">
-                                <label
-                                    class="d-flex justify-content-between align-items-start gap-3 border rounded p-3 user-select-none h-100 bg-white">
-                                    <span>
-                                        <h5 class="fw-medium text-dark fs-14 mb-1">{{ translate('Order_Delivery_Verification') }}</h5>
-                                        <p class="mb-0 fs-12">
-                                            {{ translate('customers_receive_a_verification_code_after_placing_an_order_deliveryman_must_get_the_code_to_verify_from_the_customer_when_deliver_the_order') }}
-                                        </p>
-                                    </span>
 
-                                    <label class="switcher" for="order-verification-status">
-                                        <input
-                                            class="switcher_input custom-modal-plugin"
-                                            type="checkbox" value="1" name="order_verification"
-                                            id="order-verification-status"
-                                            {{ $orderVerification == 1 ? 'checked' : '' }}
-                                            data-modal-type="input-change"
-                                            data-on-image="{{ dynamicAsset(path: 'public/assets/new/back-end/img/modal/order-verifications-on.png') }}"
-                                            data-off-image="{{ dynamicAsset(path: 'public/assets/new/back-end/img/modal/order-verifications-off.png') }}"
-                                            data-on-title="{{ translate('want_to_Turn_ON_Order_Delivery_Verification') }}"
-                                            data-off-title="{{ translate('want_to_Turn_OFF_Order_Delivery_Verification') }}"
-                                            data-on-message="<p>{{ translate('if_enabled_deliverymen_must_verify_the_order_deliveries_by_collecting_the_OTP_from_customers') }}</p>"
-                                            data-off-message="<p>{{ translate('if_disabled_deliverymen_do_not_need_to_verify_the_order_deliveries') }}</p>">
-                                        <span class="switcher_control"></span>
-                                    </label>
-                                </label>
-                            </div>
                             @php($minimumOrderAmountStatus = getWebConfig('minimum_order_amount_status'))
-                            <div class="col-xl-6 col-md-6">
-                                <label
-                                    class="d-flex justify-content-between flex-column gap-3 border rounded p-3 user-select-none h-100 bg-white">
-                                   <div class="d-flex justify-content-between align-items-start gap-3">
-                                        <span>
-                                            <h5 class="fw-medium text-dark fs-14 mb-1">{{ translate('Vendor_Can_Set_Minimum_Order_Amount') }}
-                                            </h5>
-                                            <p class="mb-0 fs-12">
-                                                {{ translate('set_a_certain_amount_below_that_customer_can_not_place_any_order_for_others_vendor_and_in-house_vendor') }}
-                                            </p>
-                                        </span>
 
-                                        <label class="switcher" for="minimum-order-amount-status">
-                                            <input
-                                                class="switcher_input custom-modal-plugin"
-                                                type="checkbox" value="1" name="minimum_order_amount_status"
-                                                id="minimum-order-amount-status"
-                                                {{ $minimumOrderAmountStatus == 1 ? 'checked' : '' }}
-                                                data-modal-type="input-change"
-                                                data-on-image="{{ dynamicAsset(path: 'public/assets/new/back-end/img/modal/minimum-order-amount-on.png') }}"
-                                                data-off-image="{{ dynamicAsset(path: 'public/assets/new/back-end/img/modal/minimum-order-amount-off.png') }}"
-                                                data-on-title="{{ translate('want_to_turn_on_Vendor_can_set_minimum_order_amount') }}?"
-                                                data-off-title="{{ translate('want_to_turn_off_Vendor_can_set_minimum_order_amount') }}?"
-                                                data-on-message="<p>{{ translate('turning_on_the_option,_the_vendor_can_set_up_the_minimum_order_amount_for_their_shop_product.') }}</p>"
-                                                data-off-message="<p>{{ translate('turning_off_the_option,_the_vendor_can_not_set_up_the_minimum_order_amount_for_their_shop_product.') }}</p>">
-                                            <span class="switcher_control"></span>
-                                        </label>
-                                   </div>
-                                    <div
-                                            class="bg-info bg-opacity-10 fs-12 px-12 py-10 text-dark rounded d-flex gap-12 align-items-center">
-                                            <i class="fi fi-sr-bulb text-info fs-16"></i>
-                                            <span>{{ translate('for_your_shop_setup_from_this_page') }}
-                                                <a href="{{ route('admin.business-settings.inhouse-shop') }}"
-                                                   target="_blank" class="text-decoration-underline fw-semibold">
-                                                    {{ translate('in_house_shop') }}
-                                                </a>.
-                                            </span>
-                                        </div>
-                                </label>
-                            </div>
                             @php($billingInputByCustomer = getWebConfig('billing_input_by_customer'))
                             <div class="col-xl-6 col-md-6">
                                 <label
@@ -196,7 +131,7 @@
                                 </label>
                             </div>
                             @php($freeDeliveryResponsibility = getWebConfig('free_delivery_responsibility'))
-                            <div class="col-lg-6">
+                            <div class="col-lg-6 d-none">
                                 <div class="form-group">
                                     <label class="form-label" for="free_delivery_responsibility">
                                         {{ translate('Free_Delivery_Responsibility') }}

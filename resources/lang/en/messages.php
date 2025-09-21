@@ -2564,4 +2564,9 @@ return [
 	"this_month" => "this month",
 	"this_year" => "this year",
 	"select_Date" => "select Date",
+	"no_account_found_with_this_phone_number" => "No account found with this phone number. Please register first or use a different login method.",
+	"enter_your_registered_phone_number_to_receive_verification_code" => "Enter your registered phone number to receive verification code",
+	"registered_users_only" => "Registered Users Only",
+	"this_login_method_is_only_for_users_who_already_have_an_account" => "This login method is only for users who already have an account.",
+	"enter_your_phone_number_to_login_or_register" => "Enter your phone number to login or register",
 ];

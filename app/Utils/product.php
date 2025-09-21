@@ -74,7 +74,7 @@ if (!function_exists('getProductDiscount')) {
 }
 
 if (!function_exists('getPriceRangeWithDiscount')) {
-    function getPriceRangeWithDiscount(array|object $product, string|null $type = 'web'): float|string
+    function getPriceRangeWithDiscount(array|object $product, string|null $type = 'web', bool $withImage = false): float|string
     {
         $productUnitPrice = $product->unit_price;
         foreach (json_decode($product->variation) as $key => $variation) {
@@ -101,18 +101,48 @@ if (!function_exists('getPriceRangeWithDiscount')) {
                 return '<span class="discounted-unit-price fs-24 font-bold">' . setCurrencySymbol(amount: usdToDefaultCurrency(amount: $productUnitPrice), currencyCode: getCurrencyCode()) . '</span>';
             }
         } else {
-            if (isset($product['clearanceSale']) && $product['clearanceSale']) {
-                $discountAmount = getProductPriceByType(product: $product, type: 'discounted_amount', result: 'value', price: $productUnitPrice);
-                $productDiscountedPrice = webCurrencyConverter(amount: $productUnitPrice - $discountAmount);
-                return '<span class="discounted-unit-price fs-24 font-bold">' . $productDiscountedPrice . '</span>' . '<del class="product-total-unit-price align-middle text-muted fs-18 font-semibold">' . webCurrencyConverter(amount: $productUnitPrice) . '</del>';
+            // Use image symbol if requested
+            if ($withImage) {
+                if (isset($product['clearanceSale']) && $product['clearanceSale']) {
+                    $discountAmount = getProductPriceByType(product: $product, type: 'discounted_amount', result: 'value', price: $productUnitPrice);
+                    $productDiscountedPrice = webCurrencyConverterWithImage(amount: $productUnitPrice - $discountAmount);
+                    return '<span class="discounted-unit-price fs-24 font-bold">' . $productDiscountedPrice . '</span>' . '<del class="product-total-unit-price align-middle text-muted fs-18 font-semibold">' . webCurrencyConverterWithImage(amount: $productUnitPrice) . '</del>';
 
-            } elseif ($product->discount > 0) {
-                $productDiscountedPrice = webCurrencyConverter(amount: $productUnitPrice - getProductDiscount(product: $product, price: $productUnitPrice));
-                return '<span class="discounted-unit-price fs-24 font-bold">' . $productDiscountedPrice . '</span>' . '<del class="product-total-unit-price align-middle text-muted fs-18 font-semibold">' . webCurrencyConverter(amount: $productUnitPrice) . '</del>';
+                } elseif ($product->discount > 0) {
+                    $productDiscountedPrice = webCurrencyConverterWithImage(amount: $productUnitPrice - getProductDiscount(product: $product, price: $productUnitPrice));
+                    return '<span class="discounted-unit-price fs-24 font-bold">' . $productDiscountedPrice . '</span>' . '<del class="product-total-unit-price align-middle text-muted fs-18 font-semibold">' . webCurrencyConverterWithImage(amount: $productUnitPrice) . '</del>';
+                } else {
+                    return '<span class="discounted-unit-price fs-24 font-bold">' . webCurrencyConverterWithImage(amount: $productUnitPrice) . '</span>';
+                }
             } else {
-                return '<span class="discounted-unit-price fs-24 font-bold">' . webCurrencyConverter(amount: $productUnitPrice) . '</span>';
+                // Default behavior with text symbol
+                if (isset($product['clearanceSale']) && $product['clearanceSale']) {
+                    $discountAmount = getProductPriceByType(product: $product, type: 'discounted_amount', result: 'value', price: $productUnitPrice);
+                    $productDiscountedPrice = webCurrencyConverter(amount: $productUnitPrice - $discountAmount);
+                    return '<span class="discounted-unit-price fs-24 font-bold">' . $productDiscountedPrice . '</span>' . '<del class="product-total-unit-price align-middle text-muted fs-18 font-semibold">' . webCurrencyConverter(amount: $productUnitPrice) . '</del>';
+
+                } elseif ($product->discount > 0) {
+                    $productDiscountedPrice = webCurrencyConverter(amount: $productUnitPrice - getProductDiscount(product: $product, price: $productUnitPrice));
+                    return '<span class="discounted-unit-price fs-24 font-bold">' . $productDiscountedPrice . '</span>' . '<del class="product-total-unit-price align-middle text-muted fs-18 font-semibold">' . webCurrencyConverter(amount: $productUnitPrice) . '</del>';
+                } else {
+                    return '<span class="discounted-unit-price fs-24 font-bold">' . webCurrencyConverter(amount: $productUnitPrice) . '</span>';
+                }
             }
         }
+    }
+}
+
+// Helper function to get price range with Saudi Riyal image symbol
+if (!function_exists('getPriceRangeWithImageSymbol')) {
+    /**
+     * Get price range with Saudi Riyal image symbol
+     * @param array|object $product
+     * @param string|null $type
+     * @return float|string
+     */
+    function getPriceRangeWithImageSymbol(array|object $product, string|null $type = 'web'): float|string
+    {
+        return getPriceRangeWithDiscount(product: $product, type: $type, withImage: true);
     }
 }
 

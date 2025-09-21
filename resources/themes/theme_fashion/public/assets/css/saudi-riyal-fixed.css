@@ -1,0 +1,156 @@
+/* Saudi Riyal Symbol - Final Solution with New Official Symbol */
+
+/* Hide any duplicate or automatic currency symbols */
+.saudi-riyal-symbol {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+.saudi-riyal-symbol-image {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+/* Hide any other currency symbols that might interfere */
+.currency-symbol-auto, 
+.currency-symbol-old,
+.old-saudi-symbol {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+/* Style for new Saudi Riyal symbol image */
+.saudi-riyal-new-symbol {
+    width: 16px !important;
+    height: 16px !important;
+    margin-left: 3px !important;
+    vertical-align: middle !important;
+    display: inline !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Larger symbol for important prices */
+.total-cost-wrapper .saudi-riyal-new-symbol,
+.proceed-cart-btn .saudi-riyal-new-symbol {
+    width: 18px !important;
+    height: 18px !important;
+}
+
+/* Hide any span with SAR or old riyal symbols */
+span[data-currency="SAR"]:not(:has(img.saudi-riyal-new-symbol)) {
+    display: none !important;
+}
+
+/* Ensure prices display properly with single symbol */
+.price, 
+.product-details-chosen-price-amount, 
+.product-details-tax-amount,
+#product-details-delivery-cost {
+    font-weight: bold;
+    position: relative;
+}
+
+/* Clean price display - remove any extra symbols */
+.price-clean {
+    display: inline-block;
+    font-weight: bold;
+}
+
+/* Prevent any JavaScript from adding duplicate symbols */
+.no-js-currency::after {
+    content: '' !important;
+    display: none !important;
+}
+
+/* Hide old SAR text if present */
+.currency-code-sar {
+    display: none !important;
+}
+
+/* Ensure proper alignment in total cost sections */
+.total-cost-wrapper span,
+.proceed-cart-btn span {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* Order Summary Currency Fixes */
+.total-cost-wrapper .total-cost-info li span:last-child {
+    position: relative;
+}
+
+/* Hide duplicate currency symbols in order summary */
+.total-cost-wrapper .total-cost-info li span:contains('ر.س'),
+.total-cost-wrapper .total-cost-info li span:contains('SAR'),
+.total-cost-wrapper .total-cost-info li span:contains('SR') {
+    display: none !important;
+}
+
+/* Ensure final prices show correctly */
+.total-cost-wrapper .total-cost-info li span:last-child::before {
+    content: '' !important;
+}
+
+/* Clean price display */
+.total-cost-wrapper .proceed-cart-btn h6 span:last-child,
+.total-cost-wrapper .total-cost-info li span:last-child {
+    font-weight: bold;
+    color: #333;
+}
+
+/* Remove any extra currency symbols */
+.total-cost-wrapper span[class*="currency"]:not(:last-child) {
+    display: none !important;
+}
+
+/* Ensure Saudi Riyal symbol appears only once */
+.total-cost-wrapper .total-cost-info li span:last-child,
+.total-cost-wrapper .proceed-cart-btn h6 span:last-child {
+    white-space: nowrap;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .total-cost-wrapper .total-cost-info li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .total-cost-wrapper .total-cost-info li span:last-child {
+        font-size: 14px;
+        font-weight: 600;
+    }
+}
+
+/* Price display controls */
+.product-details-original-price-amount {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.product-details-original-price-amount-sidebar {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Hide original price when no discount */
+.no-discount .product-details-original-price-amount,
+.no-discount .product-details-original-price-amount-sidebar {
+    display: none !important;
+}
+
+/* Discount badge styling */
+.discounted-badge-element-sidebar {
+    margin-top: 5px;
+}
+
+.discounted_badge_sidebar {
+    font-size: 12px !important;
+    padding: 3px 8px !important;
+}

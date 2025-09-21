@@ -8,6 +8,7 @@ use App\Http\Controllers\Customer\Auth\ForgotPasswordController;
 use App\Http\Controllers\Customer\Auth\LoginController;
 use App\Http\Controllers\Customer\Auth\RegisterController;
 use App\Http\Controllers\Customer\Auth\SocialAuthController;
+use App\Http\Controllers\Auth\PhoneLoginController;
 use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\SystemController;
 use App\Http\Controllers\Web\CartController;
@@ -23,12 +24,12 @@ use App\Http\Controllers\Web\ShopViewController;
 use App\Http\Controllers\Web\UserProfileController;
 use App\Http\Controllers\Web\UserWalletController;
 use App\Http\Controllers\Web\WebController;
-use App\Http\Controllers\Web\CollectionController;
 use Illuminate\Support\Facades\Route;
 use App\Enums\ViewPaths\Web\Review;
 use App\Enums\ViewPaths\Web\UserLoyalty;
 use App\Http\Controllers\Web\CurrencyController;
 use App\Http\Controllers\Web\PageController;
+use App\Http\Controllers\MyFatoorahController;
 use App\Http\Controllers\Web\ReviewController;
 use App\Http\Controllers\Web\UserLoyaltyController;
 use App\Http\Controllers\Payment_Methods\SslCommerzPaymentController;
@@ -44,6 +45,9 @@ use App\Http\Controllers\Payment_Methods\SenangPayController;
 use App\Http\Controllers\Payment_Methods\MercadoPagoController;
 use App\Http\Controllers\Payment_Methods\BkashPaymentController;
 use App\Http\Controllers\Payment_Methods\PaystackController;
+use App\Http\Controllers\Payment\TabbyController;
+use App\Http\Controllers\Payment\TamaraController;
+use App\Http\Controllers\PaymentFallbackController;
 
 /*
 |--------------------------------------------------------------------------
@@ -57,10 +61,30 @@ use App\Http\Controllers\Payment_Methods\PaystackController;
 */
 
 use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\StorageController;
+use App\Http\Controllers\TwilioWebhookController;
 
 Route::get('/test-log', function () {
     info('Testing Slack logging from Laravel!');
     return 'Slack log triggered!';
+});
+
+// Serve files from storage/app/public without symlink
+Route::get('/s/{path}', [StorageController::class, 'publicFile'])
+    ->where('path', '.*')
+    ->name('storage.public');
+
+// Twilio WhatsApp webhooks (incoming/fallback/status)
+Route::prefix('twilio/whatsapp')->group(function () {
+    Route::post('incoming', [TwilioWebhookController::class, 'incoming'])
+        ->withoutMiddleware(['web', 'csrf'])
+        ->name('twilio.whatsapp.incoming');
+    Route::post('fallback', [TwilioWebhookController::class, 'fallback'])
+        ->withoutMiddleware(['web', 'csrf'])
+        ->name('twilio.whatsapp.fallback');
+    Route::post('status', [TwilioWebhookController::class, 'status'])
+        ->withoutMiddleware(['web', 'csrf'])
+        ->name('twilio.whatsapp.status');
 });
 
 Route::controller(WebController::class)->group(function () {
@@ -114,6 +138,9 @@ Route::group(['namespace' => 'Web', 'middleware' => ['maintenance_mode', 'guestC
         Route::post('digital-product-download-otp-reset', 'getDigitalProductDownloadOtpReset')->name('digital-product-download-otp-reset');
         Route::get('pay-offline-method-list', 'pay_offline_method_list')->name('pay-offline-method-list')->middleware('guestCheck');
 
+        // Payment Fallback Route
+        Route::get('payment-fallback', [PaymentFallbackController::class, 'handleFallback'])->name('payment-fallback');
+
         //wallet payment
         Route::get('checkout-complete-wallet', 'checkout_complete_wallet')->name('checkout-complete-wallet');
 
@@ -134,9 +161,6 @@ Route::group(['namespace' => 'Web', 'middleware' => ['maintenance_mode', 'guestC
         Route::get('helpTopic', 'getHelpTopicView')->name('helpTopic');
     });
 
-    // Collections (Home Sections) public page
-    Route::get('collection/{slug}', [CollectionController::class, 'index'])->name('collection');
-
     Route::controller(ProductDetailsController::class)->group(function () {
         Route::get('/product/{slug}', 'index')->name('product');
     });
@@ -145,15 +169,23 @@ Route::group(['namespace' => 'Web', 'middleware' => ['maintenance_mode', 'guestC
         Route::get('products', 'products')->name('products');
         Route::get('flash-deals/{id}', 'getFlashDealsView')->name('flash-deals');
         Route::post('flash-deals/{id}', 'getFlashDealsProducts');
+
+        // Alternative route for discounted products
+        Route::get('products/discounted', function (Request $request) {
+            $request->merge(['offer_type' => 'discounted']);
+            return app(\App\Http\Controllers\Web\ProductListController::class)->products($request);
+        })->name('products.discounted');
     });
 
     Route::controller(ShopViewController::class)->group(function () {
         Route::post('ajax-filter-products', 'filterProductsAjaxResponse')->name('ajax-filter-products');
+        Route::post('ajax-load-more-products', 'loadMoreProductsAjax')->name('ajax-load-more-products');
     });
 
     Route::controller(WebController::class)->group(function () {
         Route::get('orderDetails', 'orderdetails')->name('orderdetails');
         Route::get('discounted-products', 'discounted_products')->name('discounted-products');
+        
         Route::post('/products-view-style', 'product_view_style')->name('product_view_style');
 
         Route::post('review-list-product', 'review_list_product')->name('review-list-product');
@@ -206,7 +238,7 @@ Route::group(['namespace' => 'Web', 'middleware' => ['maintenance_mode', 'guestC
         ROute::get('account-address-edit/{id}', 'address_edit')->name('address-edit');
         Route::post('account-address-update', 'address_update')->name('address-update');
         Route::get('account-payment', 'account_payment')->name('account-payment');
-        Route::get('account-oder', 'account_order')->name('account-oder')->middleware('customer');
+        Route::get('account-orders', 'account_order')->name('account-orders')->middleware('customer');
         Route::get('account-order-details', 'account_order_details')->name('account-order-details')->middleware('customer');
         Route::get('account-order-details-vendor-info', 'account_order_details_seller_info')->name('account-order-details-vendor-info')->middleware('customer');
         Route::get('account-order-details-delivery-man-info', 'account_order_details_delivery_man_info')->name('account-order-details-delivery-man-info')->middleware('customer');
@@ -279,6 +311,7 @@ Route::group(['prefix' => 'cart', 'as' => 'cart.', 'namespace' => 'Web'], functi
         Route::post('update-variation', 'update_variation')->name('update-variation'); //theme fashion
         Route::post('remove', 'removeFromCart')->name('remove');
         Route::get('remove-all', 'remove_all_cart')->name('remove-all'); //theme fashion
+        Route::get('nav-count', 'getNavCount')->name('nav-count'); // Get cart count
         Route::post('nav-cart-items', 'updateNavCart')->name('nav-cart');
         Route::post('floating-nav-cart-items', 'update_floating_nav')->name('floating-nav-cart-items'); // theme fashion floating nav
         Route::post('updateQuantity', 'updateQuantity')->name('updateQuantity');
@@ -414,7 +447,7 @@ if (!$isGatewayPublished) {
 
         //RAZOR-PAY
         Route::group(['prefix' => 'razor-pay', 'as' => 'razor-pay.'], function () {
-            Route::get('pay', [RazorPayController::class, 'index']);
+            Route::get('pay', [RazorPayController::class, 'index'])->name('pay');
             Route::post('payment', [RazorPayController::class, 'payment'])->name('payment')
                 ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
             Route::post('callback', [RazorPayController::class, 'callback'])->name('callback')
@@ -430,7 +463,7 @@ if (!$isGatewayPublished) {
 
         //PAYPAL
         Route::group(['prefix' => 'paypal', 'as' => 'paypal.'], function () {
-            Route::get('pay', [PaypalPaymentController::class, 'payment']);
+            Route::get('pay', [PaypalPaymentController::class, 'payment'])->name('pay');
             Route::any('success', [PaypalPaymentController::class, 'success'])->name('success')
                 ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
             Route::any('cancel', [PaypalPaymentController::class, 'cancel'])->name('cancel')
@@ -439,13 +472,13 @@ if (!$isGatewayPublished) {
 
         //SENANG-PAY
         Route::group(['prefix' => 'senang-pay', 'as' => 'senang-pay.'], function () {
-            Route::get('pay', [SenangPayController::class, 'index']);
-            Route::any('callback', [SenangPayController::class, 'return_senang_pay']);
+            Route::get('pay', [SenangPayController::class, 'index'])->name('pay');
+            Route::any('callback', [SenangPayController::class, 'return_senang_pay'])->name('callback');
         });
 
         //PAYTM
         Route::group(['prefix' => 'paytm', 'as' => 'paytm.'], function () {
-            Route::get('pay', [PaytmController::class, 'payment']);
+            Route::get('pay', [PaytmController::class, 'payment'])->name('pay');
             Route::any('response', [PaytmController::class, 'callback'])->name('response')
                 ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
         });
@@ -479,7 +512,7 @@ if (!$isGatewayPublished) {
 
         //MERCADOPAGO
         Route::group(['prefix' => 'mercadopago', 'as' => 'mercadopago.'], function () {
-            Route::get('pay', [MercadoPagoController::class, 'index'])->name('index');
+            Route::get('pay', [MercadoPagoController::class, 'index'])->name('pay'); // Changed from 'index' to 'pay' for consistency
             Route::post('make-payment', [MercadoPagoController::class, 'make_payment'])->name('make_payment');
         });
 
@@ -495,5 +528,104 @@ if (!$isGatewayPublished) {
             Route::any('callback', [PaytabsController::class, 'callback'])->name('callback');
             Route::any('response', [PaytabsController::class, 'response'])->name('response');
         });
+
+        //MYFATOORAH
+        Route::group(['prefix' => 'fatoorah', 'as' => 'fatoorah.'], function () {
+            Route::get('pay', [\App\Http\Controllers\Payment\FatoorahController::class, 'pay'])->name('pay');
+            Route::get('callback', [\App\Http\Controllers\Payment\FatoorahController::class, 'callback'])->name('callback');
+            Route::get('error', [\App\Http\Controllers\Payment\FatoorahController::class, 'error'])->name('error');
+        });
+
+        //TABBY
+        Route::group(['prefix' => 'tabby', 'as' => 'tabby.'], function () {
+            Route::get('pay', [TabbyController::class, 'pay'])->name('pay');
+            Route::get('callback', [TabbyController::class, 'callback'])->name('callback');
+            Route::post('webhook', [TabbyController::class, 'webhook'])->name('webhook')
+                ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+        });
+
+        //TAMARA
+        Route::group(['prefix' => 'tamara', 'as' => 'tamara.'], function () {
+            Route::get('pay', [TamaraController::class, 'pay'])->name('pay');
+            Route::get('success', [TamaraController::class, 'success'])->name('success');
+            Route::get('failure', [TamaraController::class, 'failure'])->name('failure');
+            Route::get('cancel', [TamaraController::class, 'cancel'])->name('cancel');
+            Route::post('notification', [TamaraController::class, 'notification'])->name('notification')
+                ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+        });
     });
 }
+
+// MyFatoorah Payment Routes
+Route::post('myfatoorah/process-payment', [MyFatoorahController::class, 'processPayment'])->name('myfatoorah.process');
+Route::get('myfatoorah/callback', [MyFatoorahController::class, 'handleCallback'])->name('myfatoorah.callback');
+Route::get('myfatoorah/error', [MyFatoorahController::class, 'handleError'])->name('myfatoorah.error');
+Route::post('myfatoorah/webhook', [MyFatoorahController::class, 'webhook'])->name('myfatoorah.webhook');
+
+// MyFatoorah Pages
+Route::get('myfatoorah/payment', function () {
+    return view('web.myfatoorah.payment_form');
+})->name('myfatoorah.form');
+
+Route::get('payment/success', function () {
+    return view('web.myfatoorah.payment_success');
+})->name('payment.success');
+
+Route::get('payment/error', function () {
+    return view('web.myfatoorah.payment_error');
+})->name('payment.error');
+
+// Payment Fallback routes for handling gateway errors
+Route::controller(App\Http\Controllers\Payment\FallbackController::class)->group(function () {
+    Route::get('/payment-fallback', 'handleFallback')->name('payment-fallback');
+    Route::get('/payment-selection', 'showAlternatives')->name('payment-selection');
+});
+
+// Tamara payment routes
+Route::controller(TamaraController::class)->group(function () {
+    Route::get('/tamara/success', 'success')->name('tamara.success');
+    Route::get('/tamara/failure', 'failure')->name('tamara.failure');
+    Route::get('/tamara/cancel', 'cancel')->name('tamara.cancel');
+    Route::post('/tamara/notification', 'notification')
+        ->name('tamara.notification')
+        ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+    Route::get('/tamara/pay', 'pay')->name('tamara.pay');
+});
+
+// Phone Login Routes
+Route::group(['prefix' => 'phone-login', 'as' => 'phone-login.'], function () {
+    Route::post('request-otp', [PhoneLoginController::class, 'requestOtp'])->name('request-otp');
+    Route::post('verify-otp', [PhoneLoginController::class, 'verifyOtp'])->name('verify-otp');
+    Route::post('resend-otp', [PhoneLoginController::class, 'resendOtp'])->name('resend-otp');
+});
+
+// Tryoto Shipping Routes
+Route::group(['prefix' => 'tryoto', 'as' => 'tryoto.'], function () {
+    Route::post('create-shipment', [App\Http\Controllers\Web\TryotoController::class, 'createShipment'])->name('create-shipment');
+    Route::get('track/{order_id}', [App\Http\Controllers\Web\TryotoController::class, 'trackShipment'])->name('track');
+});
+
+// Tryoto API Test Routes
+Route::group(['prefix' => 'tryoto-test', 'as' => 'tryoto-test.'], function () {
+    Route::get('/', function () {
+        return view('tryoto-test');
+    })->name('index');
+    Route::get('test-api', [App\Http\Controllers\TryotoTestController::class, 'testApi'])->name('test-api');
+    Route::get('check-access', [App\Http\Controllers\TryotoTestController::class, 'checkApiAccess'])->name('check-access');
+    Route::get('test-endpoint', [App\Http\Controllers\TryotoTestController::class, 'testEndpoint'])->name('test-endpoint');
+    Route::get('test-endpoints', [App\Http\Controllers\TryotoTestController::class, 'testEndpoints'])->name('test-endpoints');
+    Route::get('check-permissions', [App\Http\Controllers\TryotoTestController::class, 'checkPermissions'])->name('check-permissions');
+    Route::get('test-versions', [App\Http\Controllers\TryotoTestController::class, 'testVersions'])->name('test-versions');
+    Route::get('try-alternatives', [App\Http\Controllers\TryotoTestController::class, 'tryAlternatives'])->name('try-alternatives');
+    Route::get('create-dashboard-test', [App\Http\Controllers\TryotoTestController::class, 'createDashboardTest'])->name('create-dashboard-test');
+    Route::get('create-simple-test', [App\Http\Controllers\TryotoTestController::class, 'createSimpleTest'])->name('create-simple-test');
+    Route::get('test-create-order-correct', [App\Http\Controllers\TryotoTestController::class, 'testCreateOrderCorrect'])->name('test-create-order-correct');
+});
+
+// Include monitoring routes
+require __DIR__ . '/monitoring.php';
+
+// Catch-all route for 404 pages - redirect to homepage
+Route::fallback(function () {
+    return redirect()->route('home');
+});

@@ -63,11 +63,11 @@
                         <div class="d-flex flex-wrap align-items-center gap-3 mb-2 text-dark">
                             <h2 class="c1 text-accent price-range-with-discount d-flex gap-2 align-items-center">
                                 <span class="discounted-unit-price fs-24 font-bold">
-                                    {{ getProductPriceByType(product: $product, type: 'discounted_unit_price', result: 'string') }}
+                                    {!! webCurrencyConverterWithImage(product: $product, type: 'discounted_unit_price', result: 'string') !!}
                                 </span>
                                 @if(getProductPriceByType(product: $product, type: 'discount', result: 'value') > 0)
                                     <del class="product-total-unit-price align-middle text-muted fs-18 font-semibold">
-                                        {{ webCurrencyConverter(amount: $product->unit_price) }}
+                                        {!! webCurrencyConverterWithImage(amount: $product->unit_price) !!}
                                     </del>
                                 @endif
                             </h2>

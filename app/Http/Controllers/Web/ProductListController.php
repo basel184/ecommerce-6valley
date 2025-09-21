@@ -27,7 +27,17 @@ class ProductListController extends Controller
 
     public function products(Request $request)
     {
+        // Debug logging
+        \Log::info('Products request received', [
+            'url' => $request->fullUrl(),
+            'offer_type' => $request->get('offer_type'),
+            'page' => $request->get('page'),
+            'all_params' => $request->all()
+        ]);
+        
         $themeName = theme_root_path();
+        
+        \Log::info('Theme detected: ' . $themeName);
 
         return match ($themeName) {
             'default' => self::default_theme($request),
@@ -66,7 +76,17 @@ class ProductListController extends Controller
             }
         }
         $productListData = ProductManager::getProductListData(request: $request);
-        $products = $productListData->paginate(20)->appends($data);
+        // Exclude categories 230 and 776 specifically for offers (discounted)
+        if (($request['offer_type'] ?? null) === 'discounted') {
+            if ($productListData instanceof \Illuminate\Database\Eloquent\Builder || $productListData instanceof \Illuminate\Database\Query\Builder) {
+                $productListData = $productListData->whereNotIn('category_id', [230, 776]);
+            } elseif ($productListData instanceof \Illuminate\Support\Collection) {
+                $productListData = $productListData->filter(function ($p) {
+                    return !isset($p->category_id) || !in_array((int)$p->category_id, [230, 776], true);
+                });
+            }
+        }
+        $products = $productListData->sortBy('unit_price')->paginate(20)->appends($data);
         if ($request->ajax()) {
             return response()->json([
                 'total_product' => $products->total(),
@@ -106,8 +126,18 @@ class ProductListController extends Controller
         }
 
         $productListData = ProductManager::getProductListData(request: $request);
+        // Exclude categories 230 and 776 specifically for offers (discounted)
+        if (($request['offer_type'] ?? null) === 'discounted') {
+            if ($productListData instanceof \Illuminate\Database\Eloquent\Builder || $productListData instanceof \Illuminate\Database\Query\Builder) {
+                $productListData = $productListData->whereNotIn('category_id', [230, 776]);
+            } elseif ($productListData instanceof \Illuminate\Support\Collection) {
+                $productListData = $productListData->filter(function ($p) {
+                    return !isset($p->category_id) || !in_array((int)$p->category_id, [230, 776], true);
+                });
+            }
+        }
         $ratings = self::getProductsRatingOneToFiveAsArray(productQuery: $productListData);
-        $products = $productListData->paginate(20)->appends($data);
+        $products = $productListData->sortBy('unit_price')->paginate(20)->appends($data);
         $getProductIds = $products->pluck('id')->toArray();
 
         $category = [];
@@ -172,6 +202,8 @@ class ProductListController extends Controller
 
     public function theme_fashion(Request $request): View|JsonResponse|Redirector|RedirectResponse
     {
+        \Log::info('theme_fashion method called with request params', $request->all());
+        
         if ($request->has('min_price') && $request['min_price'] != '' && $request->has('max_price') && $request['max_price'] != '' && $request['min_price'] > $request['max_price']) {
             if ($request->ajax()) {
                 return response()->json([
@@ -203,7 +235,17 @@ class ProductListController extends Controller
         $tagBrand = $this->getPageSelectedDataByType(request: $request, type: 'brand');
 
         $productListData = ProductManager::getProductListData(request: $request);
-        $products = $productListData->paginate($singlePageProductCount)->appends($data);
+        // Exclude categories 230 and 776 specifically for offers (discounted)
+        if (($request['offer_type'] ?? null) === 'discounted') {
+            if ($productListData instanceof \Illuminate\Database\Eloquent\Builder || $productListData instanceof \Illuminate\Database\Query\Builder) {
+                $productListData = $productListData->whereNotIn('category_id', [230, 776]);
+            } elseif ($productListData instanceof \Illuminate\Support\Collection) {
+                $productListData = $productListData->filter(function ($p) {
+                    return !isset($p->category_id) || !in_array((int)$p->category_id, [230, 776], true);
+                });
+            }
+        }
+        $products = $productListData->sortBy('unit_price')->paginate($singlePageProductCount)->appends($data);
         $paginate_count = ceil(($products->total() / $singlePageProductCount));
         $getProductIds = $products->pluck('id')->toArray();
 
@@ -309,6 +351,9 @@ class ProductListController extends Controller
             session()->put('product_view_style', $request['product_view']);
         }
 
+        // Set default sorting to price low to high if no sorting is specified
+        $sortBy = $request['sort_by'] ?? 'low-high';
+        
         return [
             'id' => $request['id'],
             'name' => $request['name'],
@@ -318,7 +363,7 @@ class ProductListController extends Controller
             'sub_sub_category_id' => $request['sub_sub_category_id'],
             'data_from' => $request['data_from'],
             'offer_type' => $request['offer_type'],
-            'sort_by' => $request['sort_by'],
+            'sort_by' => $sortBy,
             'page_no' => $request['page'],
             'min_price' => $request['min_price'],
             'max_price' => $request['max_price'],
@@ -357,7 +402,7 @@ class ProductListController extends Controller
 
         $productListData = ProductManager::getProductListData(request: $request, type: 'flash-deals');
         $ratings = self::getProductsRatingOneToFiveAsArray(productQuery: $productListData);
-        $products = $productListData->paginate(20)->appends($data);
+        $products = $productListData->sortBy('unit_price')->paginate(20)->appends($data);
         $getProductIds = $products->pluck('id')->toArray();
 
         if ($request['ratings'] != null) {
