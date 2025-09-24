@@ -13,7 +13,13 @@ export default defineNuxtConfig({
     compatibilityDate: '2025-09-11'
   },
   typescript: {
-    strict: true
+    strict: false,
+    typeCheck: false
+  },
+  vue: {
+    compilerOptions: {
+      isCustomElement: (tag) => tag.startsWith('swiper-')
+    }
   },
   modules: [
     '@nuxtjs/i18n'
@@ -22,7 +28,11 @@ export default defineNuxtConfig({
   i18n: {
     strategy: 'prefix_except_default', // default (ar) without prefix, others with prefix (/en)
     defaultLocale: 'ar',
-    detectBrowserLanguage: false,
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'i18n_redirected',
+      redirectOn: 'root'
+    },
     langDir: 'locales',
     locales: [
       { code: 'ar', language: 'ar', name: 'العربية', dir: 'rtl', file: 'ar.json' },

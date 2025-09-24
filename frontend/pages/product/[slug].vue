@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 // Import Swiper Vue.js components
 import { Swiper, SwiperSlide } from 'swiper/vue'
 // Import Swiper styles
@@ -17,7 +18,6 @@ const SwiperSlideComponent = SwiperSlide
 const route = useRoute()
 const { details: getDetails, related: getRelated } = useProducts() as any
 const cart = useCart()
-
 // Reviews data
 const reviews = ref<any[]>([])
 const reviewsLoading = ref(false)
@@ -214,28 +214,192 @@ const activeTab = ref('description')
 
 // Auth and review modal
 const showLoginModal = ref(false)
-const isLoggedIn = ref(false) // This should be connected to your auth system
+const auth = useAuth()
+const { t } = useI18n()
+const { $get, $post } = useApi()
+
+// Login form
+const loginForm = ref({ email: '', password: '' })
+const loginLoading = ref(false)
+const loginError = ref('')
+
+
+// Review form
+const showReviewModal = ref(false)
+const reviewForm = ref({
+  rating: 5,
+  comment: '',
+  images: []
+})
+const reviewLoading = ref(false)
+const reviewError = ref('')
 
 // Handle write review button click
 const handleWriteReview = () => {
-  if (isLoggedIn.value) {
-    // User is logged in, show review form or redirect to review page
-    console.log('User is logged in, show review form')
-    // TODO: Implement review form modal or redirect
+  if (auth?.user?.value) {
+    // User is logged in, show review form
+    showReviewModal.value = true
+    reviewForm.value = {
+      rating: 5,
+      comment: '',
+      images: []
+    }
   } else {
     // User is not logged in, show login modal
     showLoginModal.value = true
   }
 }
 
-// Close login modal
-const closeLoginModal = () => {
-  showLoginModal.value = false
+// Submit review
+const submitReview = async () => {
+  if (!reviewForm.value.comment.trim()) {
+    reviewError.value = 'يرجى كتابة تعليق'
+    return
+  }
+  
+  reviewLoading.value = true
+  reviewError.value = ''
+  
+  try {
+    const productId = product.value?.id || product.value?.product_id || product.value?.product?.id
+    if (!productId) {
+      reviewError.value = 'خطأ في معرف المنتج'
+      return
+    }
+    
+    const response = await $post('v1/products/reviews/submit-guest', {
+      product_id: productId,
+      rating: reviewForm.value.rating,
+      comment: reviewForm.value.comment,
+      images: reviewForm.value.images
+    })
+    
+    if (response) {
+      showReviewModal.value = false
+      // Reload reviews
+      await loadReviews()
+      // Show success message
+      console.log('تم إرسال التقييم بنجاح')
+    }
+  } catch (error: any) {
+    console.error('Review submission error:', error)
+    if (error?.data?.errors && Array.isArray(error.data.errors)) {
+      const errorMessages = error.data.errors.map((err: any) => err.message).join(', ')
+      reviewError.value = errorMessages
+    } else {
+      reviewError.value = error?.data?.message || 'خطأ في إرسال التقييم'
+    }
+  } finally {
+    reviewLoading.value = false
+  }
+}
+
+// Close review modal
+const closeReviewModal = () => {
+  showReviewModal.value = false
+  reviewError.value = ''
+  reviewForm.value = {
+    rating: 5,
+    comment: '',
+    images: []
+  }
+}
+
+// Reply functions
+const showReplyModal = ref(false)
+const selectedReviewId = ref<string | null>(null)
+const replyText = ref('')
+const replyLoading = ref(false)
+const replyError = ref('')
+
+const openReplyModal = (reviewId: string) => {
+  selectedReviewId.value = reviewId
+  replyText.value = ''
+  replyError.value = ''
+  showReplyModal.value = true
+}
+
+const closeReplyModal = () => {
+  showReplyModal.value = false
+  selectedReviewId.value = null
+  replyText.value = ''
+  replyError.value = ''
+}
+
+const submitReply = async () => {
+  if (!replyText.value.trim()) {
+    replyError.value = 'يرجى كتابة رد'
+    return
+  }
+  
+  replyLoading.value = true
+  replyError.value = ''
+  
+  try {
+    const response = await $post('v1/products/review/reply', {
+      review_id: selectedReviewId.value,
+      reply_text: replyText.value
+    })
+    
+    if (response) {
+      closeReplyModal()
+      // Reload reviews
+      await loadReviews()
+    }
+  } catch (error: any) {
+    console.error('Reply submission error:', error)
+    if (error?.data?.errors && Array.isArray(error.data.errors)) {
+      const errorMessages = error.data.errors.map((err: any) => err.message).join(', ')
+      replyError.value = errorMessages
+    } else {
+      replyError.value = error?.data?.message || 'خطأ في إرسال الرد'
+    }
+  } finally {
+    replyLoading.value = false
+  }
+}
+
+// Like functions
+const likeReview = async (reviewId: string) => {
+  try {
+    const response = await $post('v1/products/review/like', {
+      review_id: reviewId
+    })
+    
+    if (response) {
+      // Reload reviews to update likes count
+      await loadReviews()
+    }
+  } catch (error: any) {
+    console.error('Like error:', error)
+  }
+}
+
+const unlikeReview = async (reviewId: string) => {
+  try {
+    const response = await $fetch(`/api/v1/products/review/like/${reviewId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { lang: 'sa' }
+    })
+    
+    if (response) {
+      // Reload reviews to update likes count
+      await loadReviews()
+    }
+  } catch (error: any) {
+    console.error('Unlike error:', error)
+  }
+}
+
+// Handle register
+const handleRegister = () => {
+  // TODO: Implement register logic
+  console.log('Redirect to register')
 }
 
 // Handle login success
 const handleLoginSuccess = () => {
-  isLoggedIn.value = true
   showLoginModal.value = false
   // Reload reviews after login
   loadReviews()
@@ -255,7 +419,67 @@ const addToCart = async () => {
     busy.value = false
   }
 }
+// Login functions
+async function handleLogin() {
+  if (!loginForm.value.email || !loginForm.value.password) {
+    loginError.value = t('login.required_fields') || 'جميع الحقول مطلوبة'
+    return
+  }
+  
+  loginLoading.value = true
+  loginError.value = ''
+  
+  try {
+    const response = await $post('v1/auth/login', {
+      email_or_phone: loginForm.value.email,
+      password: loginForm.value.password,
+      type: 'email'
+    })
+    
+    // Handle different response formats
+    if (response?.access_token) {
+      auth.setToken(response.access_token)
+      // Try to get user info
+      try {
+        const userInfo = await $get('v1/customer/info')
+        if (userInfo) auth.setUser(userInfo)
+      } catch (e) {
+        // If user info fails, still set token
+        auth.setUser(response.user || response.data)
+      }
+      showLoginModal.value = false
+      loginForm.value = { email: '', password: '' }
+    } else if (response?.token) {
+      auth.setToken(response.token)
+      auth.setUser(response.user || response.data)
+      showLoginModal.value = false
+      loginForm.value = { email: '', password: '' }
+    }
+  } catch (error: any) {
+    console.error('Login error:', error)
+    // Handle validation errors
+    if (error?.data?.errors && Array.isArray(error.data.errors)) {
+      const errorMessages = error.data.errors.map((err: any) => err.message).join(', ')
+      loginError.value = errorMessages
+    } else {
+      loginError.value = error?.data?.message || t('login.error') || 'خطأ في تسجيل الدخول'
+    }
+  } finally {
+    loginLoading.value = false
+  }
+}
 
+function openLoginModal() {
+  showLoginModal.value = true
+  loginError.value = ''
+  loginForm.value = { email: '', password: '' }
+}
+
+function closeLoginModal() {
+  showLoginModal.value = false
+  loginError.value = ''
+  loginForm.value = { email: '', password: '' }
+}
 // Load reviews
 const loadReviews = async () => {
   if (!product.value) return
@@ -334,10 +558,16 @@ const load = async () => {
 
 onMounted(() => {
   load()
-  // Add escape key listener for modal
+  // Add escape key listener for modals
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && showLoginModal.value) {
-      closeLoginModal()
+    if (e.key === 'Escape') {
+      if (showLoginModal.value) {
+        closeLoginModal()
+      } else if (showReviewModal.value) {
+        closeReviewModal()
+      } else if (showReplyModal.value) {
+        closeReplyModal()
+      }
     }
   })
 })
@@ -540,9 +770,16 @@ watch(slug, () => { mainIndex.value = 0; load() })
               </div>
             </div>
             <div class="reviews-actions">
-              <button class="write-review-btn" @click="handleWriteReview">
-                {{ isLoggedIn ? 'اكتب تقييمك' : 'تسجيل الدخول للتقيم' }}
-              </button>
+              <template v-if="auth?.user?.value">
+                <button class="write-review-btn" @click="handleWriteReview">
+                  اكتب تقييمك
+                </button>
+              </template>
+              <template v-else>
+                <button class="write-review-btn" @click="handleWriteReview" type="button">
+                  تسجيل الدخول للتقيم
+                </button>
+              </template>
               <select class="sort-select">
                 <option value="newest">الأحدث أولاً</option>
                 <option value="oldest">الأقدم أولاً</option>
@@ -574,18 +811,35 @@ watch(slug, () => { mainIndex.value = 0; load() })
                 <div class="review-date">{{ formatDate(review.created_at) }}</div>
               </div>
               <div class="review-text">{{ review.comment || 'لا يوجد تعليق' }}</div>
+              
+              <!-- Replies Section -->
+              <div v-if="review.replies && review.replies.length > 0" class="replies-section">
+                <div class="replies-header">
+                  <h4>الردود ({{ review.replies_count || 0 }})</h4>
+                </div>
+                <div class="replies-list">
+                  <div v-for="reply in review.replies" :key="reply.id" class="reply-item">
+                    <div class="reply-header">
+                      <span class="reply-author">{{ maskCustomerName(reply.customer?.f_name || reply.customer?.name || 'مجهول') }}</span>
+                      <span class="reply-date">{{ formatDate(reply.created_at) }}</span>
+                    </div>
+                    <div class="reply-text">{{ reply.reply_text }}</div>
+                  </div>
+                </div>
+              </div>
+              
               <div class="review-actions">
-                <button class="action-btn">
+                <button class="action-btn" @click="openReplyModal(review.id)">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M21.99 4c0-1.1-.89-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/>
                   </svg>
-                  {{ review.reply?.length || 0 }}
+                  رد ({{ review.replies_count || 0 }})
                 </button>
-                <button class="action-btn">
+                <button class="action-btn" @click="likeReview(review.id)">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M7.5 21H2V9h5.5v12zm7.25-18h-5.5v18h5.5V3zM22 9h-5.5v12H22V9z"/>
                   </svg>
-                  {{ review.likes || 0 }}
+                  إعجاب ({{ review.likes_count || 0 }})
                 </button>
               </div>
             </div>
@@ -604,29 +858,146 @@ watch(slug, () => { mainIndex.value = 0; load() })
     </div>
 
     <!-- Login Modal -->
-    <div v-if="showLoginModal" class="modal-overlay" @click="closeLoginModal">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h3>تسجيل الدخول</h3>
-          <button class="close-btn" @click="closeLoginModal">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <p>يجب تسجيل الدخول لتتمكن من كتابة تقييم</p>
-          <div class="login-options">
-            <button class="login-btn primary" @click="handleLoginSuccess">
-              تسجيل الدخول
+    <teleport to="body">
+      <div v-if="showLoginModal" class="login-overlay" @click.self="closeLoginModal">
+        <div class="login-modal" dir="rtl">
+          <div class="login-header">
+            <h2>{{ t('login') || 'تسجيل الدخول' }}</h2>
+            <button class="close-btn" @click="closeLoginModal">
+              <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/></svg>
             </button>
-            <button class="login-btn secondary" @click="closeLoginModal">
-              إلغاء
+          </div>
+          
+          <form @submit.prevent="handleLogin" class="login-form">
+            <div class="form-group">
+              <label for="email">{{ t('email') || 'البريد الإلكتروني' }}</label>
+              <input 
+                id="email"
+                v-model="loginForm.email" 
+                type="email" 
+                :placeholder="t('email') || 'البريد الإلكتروني'"
+                required
+                :disabled="loginLoading"
+              />
+            </div>
+            
+            <div class="form-group">
+              <label for="password">{{ t('password') || 'كلمة المرور' }}</label>
+              <input 
+                id="password"
+                v-model="loginForm.password" 
+                type="password" 
+                :placeholder="t('password') || 'كلمة المرور'"
+                required
+                :disabled="loginLoading"
+              />
+            </div>
+            
+            <div v-if="loginError" class="error-message">
+              {{ loginError }}
+            </div>
+            
+            <button type="submit" class="login-btn" :disabled="loginLoading">
+              <span v-if="loginLoading">{{ t('loading') || 'جاري التحميل...' }}</span>
+              <span v-else>{{ t('login') || 'تسجيل الدخول' }}</span>
             </button>
+          </form>
+          
+          <div class="login-footer">
+            <p>ليس لديك حساب؟ <a href="#" @click.prevent="handleRegister">إنشاء حساب جديد</a></p>
           </div>
         </div>
       </div>
-    </div>
+    </teleport>
+
+    <!-- Review Modal -->
+    <teleport to="body">
+      <div v-if="showReviewModal" class="review-overlay" @click.self="closeReviewModal">
+        <div class="review-modal" dir="rtl">
+          <div class="review-header">
+            <h2>اكتب تقييمك</h2>
+            <button class="close-btn" @click="closeReviewModal">
+              <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/></svg>
+            </button>
+          </div>
+          
+          <form @submit.prevent="submitReview" class="review-form">
+            <div class="form-group">
+              <label>تقييمك</label>
+              <div class="rating-input">
+                <span 
+                  v-for="i in 5" 
+                  :key="i" 
+                  class="star-input" 
+                  :class="{ filled: i <= reviewForm.rating }"
+                  @click="reviewForm.rating = i"
+                >
+                  ★
+                </span>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="comment">تعليقك</label>
+              <textarea 
+                id="comment"
+                v-model="reviewForm.comment" 
+                :placeholder="'اكتب تعليقك عن المنتج...'"
+                rows="4"
+                required
+                :disabled="reviewLoading"
+              ></textarea>
+            </div>
+            
+            <div v-if="reviewError" class="error-message">
+              {{ reviewError }}
+            </div>
+            
+            <button type="submit" class="submit-btn" :disabled="reviewLoading">
+              <span v-if="reviewLoading">جاري الإرسال...</span>
+              <span v-else>إرسال التقييم</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </teleport>
+
+    <!-- Reply Modal -->
+    <teleport to="body">
+      <div v-if="showReplyModal" class="reply-overlay" @click.self="closeReplyModal">
+        <div class="reply-modal" dir="rtl">
+          <div class="reply-header">
+            <h2>أضف رد</h2>
+            <button class="close-btn" @click="closeReplyModal">
+              <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/></svg>
+            </button>
+          </div>
+          
+          <form @submit.prevent="submitReply" class="reply-form">
+            <div class="form-group">
+              <label for="reply-text">ردك</label>
+              <textarea 
+                id="reply-text"
+                v-model="replyText" 
+                :placeholder="'اكتب ردك...'"
+                rows="4"
+                required
+                :disabled="replyLoading"
+              ></textarea>
+            </div>
+            
+            <div v-if="replyError" class="error-message">
+              {{ replyError }}
+            </div>
+            
+            <button type="submit" class="submit-btn" :disabled="replyLoading">
+              <span v-if="replyLoading">جاري الإرسال...</span>
+              <span v-else>إرسال الرد</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </teleport>
   </div>
 </template>
 
@@ -1088,4 +1459,360 @@ watch(slug, () => { mainIndex.value = 0; load() })
   .rec{ margin-top:40px; padding-top:20px; border-top:1px solid #e5e7eb }
   .rec h2{ font-size:20px; font-weight:700; color:#111827; margin-bottom:16px }
   .grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:16px }
+
+  /* Login Modal */
+  .login-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .login-modal {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .login-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 24px 0;
+  }
+
+  .login-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+  }
+
+  .close-btn:hover {
+    background: #f3f4f6;
+  }
+
+  .login-form {
+    padding: 24px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+
+  .form-group input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+  }
+
+  .form-group input:focus {
+    outline: none;
+    border-color: #6b46c1;
+    box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.1);
+  }
+
+  .login-btn {
+    width: 100%;
+    background: #6b46c1;
+    color: #fff;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .login-btn:hover:not(:disabled) {
+    background: #553c9a;
+  }
+
+  .login-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+
+  .error-message {
+    background: #fee;
+    color: #c53030;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 16px;
+    border: 1px solid #feb2b2;
+  }
+
+  .login-footer {
+    padding: 16px 24px 24px;
+    text-align: center;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .login-footer p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+  }
+
+  .login-footer a {
+    color: #6b46c1;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .login-footer a:hover {
+    text-decoration: underline;
+  }
+
+  /* Review Modal */
+  .review-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .review-modal {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .review-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 24px 0;
+  }
+
+  .review-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+  }
+
+  .review-form {
+    padding: 24px;
+  }
+
+  .rating-input {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .star-input {
+    font-size: 32px;
+    color: #d1d5db;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    user-select: none;
+  }
+
+  .star-input:hover {
+    color: #f59e0b;
+  }
+
+  .star-input.filled {
+    color: #f59e0b;
+  }
+
+  .form-group textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
+  }
+
+  .form-group textarea:focus {
+    outline: none;
+    border-color: #6b46c1;
+    box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.1);
+  }
+
+  .submit-btn {
+    width: 100%;
+    background: #6b46c1;
+    color: #fff;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .submit-btn:hover:not(:disabled) {
+    background: #553c9a;
+  }
+
+  .submit-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+
+  /* Replies Section */
+  .replies-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .replies-header h4 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .replies-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .reply-item {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+  }
+
+  .reply-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .reply-author {
+    font-weight: 600;
+    color: #111827;
+    font-size: 13px;
+  }
+
+  .reply-date {
+    color: #9ca3af;
+    font-size: 12px;
+  }
+
+  .reply-text {
+    color: #6b7280;
+    line-height: 1.5;
+    font-size: 14px;
+  }
+
+  /* Reply Modal */
+  .reply-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 90;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .reply-modal {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .reply-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 24px 0;
+  }
+
+  .reply-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+  }
+
+  .reply-form {
+    padding: 24px;
+  }
+
+  /* Enhanced Action Buttons */
+  .action-btn {
+    background: none;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.2s;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+
+  .action-btn:hover {
+    color: #111827;
+    background: #f3f4f6;
+  }
+
+  .action-btn svg {
+    width: 16px;
+    height: 16px;
+  }
 </style>

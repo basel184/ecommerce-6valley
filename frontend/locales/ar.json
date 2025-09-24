@@ -7,5 +7,13 @@
   "logout": "خروج",
   "home": "الرئيسية",
   "bag": "الحقيبة",
-  "account": "الحساب"
+  "account": "الحساب",
+  "email": "البريد الإلكتروني",
+  "password": "كلمة المرور",
+  "loading": "جاري التحميل...",
+  "register": "إنشاء حساب",
+  "forgot_password": "نسيت كلمة المرور؟",
+  "close": "إغلاق",
+  "login.required_fields": "جميع الحقول مطلوبة",
+  "login.error": "خطأ في تسجيل الدخول"
 }

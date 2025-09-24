@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 
 /**
  * Class ReviewReply
@@ -39,5 +40,15 @@ class ReviewReply extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    public function customer()
+    {
+        return $this->belongsTo(User::class, 'added_by_id');
+    }
+
+    public function review()
+    {
+        return $this->belongsTo(Review::class, 'review_id');
+    }
 
 }

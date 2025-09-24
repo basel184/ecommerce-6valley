@@ -400,7 +400,9 @@ function closeLoginModal() {
 
         <div class="profile">
           <template v-if="auth?.user?.value">
-            <span class="hide-sm">{{ auth.user.value?.name || t('account') }}</span>
+            <NuxtLink class="icon-btn" to="/account" aria-label="Account">
+              <svg width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M12 19.2c-2.5 0-7.5 1.25-7.5 3.75V25h15v-2.05c0-2.5-5-3.75-7.5-3.75M12 2a5 5 0 0 0-5 5a5 5 0 0 0 10 0a5 5 0 0 0-5-5Z"/></svg>
+            </NuxtLink>
             <button class="text-btn" @click="auth.setToken(null); auth.setUser(null)">{{ t('logout') }}</button>
           </template>
           <template v-else>

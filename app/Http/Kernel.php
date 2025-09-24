@@ -33,6 +33,7 @@ class Kernel extends HttpKernel
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        \App\Http\Middleware\CorsMiddleware::class,
         DatabaseRefreshMiddleware::class
     ];
 
@@ -53,6 +54,8 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
+            \Illuminate\Http\Middleware\HandleCors::class,
+            \App\Http\Middleware\CorsMiddleware::class,
             'throttle:3000,1',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],

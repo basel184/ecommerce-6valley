@@ -162,9 +162,16 @@ Route::group(['namespace' => 'RestAPI\v1', 'prefix' => 'v1', 'middleware' => ['a
             Route::get('shipping-methods', 'get_shipping_methods');
             Route::get('social-share-link/{product_id}', 'socialShareLink');
             Route::post('reviews/submit', 'submit_product_review')->middleware('auth:api');
+            Route::post('reviews/submit-guest', 'submit_product_review_guest')->middleware('auth:api');
             Route::put('review/update', 'updateProductReview')->middleware('auth:api');
             Route::get('review/{product_id}/{order_id}', 'getProductReviewByOrder')->middleware('auth:api');
             Route::delete('review/delete-image', 'deleteReviewImage')->middleware('auth:api');
+            // Review replies and likes
+            Route::post('review/reply', 'addReviewReply')->middleware('auth:api');
+            Route::put('review/reply/{reply_id}', 'updateReviewReply')->middleware('auth:api');
+            Route::delete('review/reply/{reply_id}', 'deleteReviewReply')->middleware('auth:api');
+            Route::post('review/like', 'likeReview')->middleware('auth:api');
+            Route::delete('review/like/{review_id}', 'unlikeReview')->middleware('auth:api');
         });
     });
 

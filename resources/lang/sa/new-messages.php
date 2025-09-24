@@ -1405,4 +1405,13 @@ return [
 	"change_Password" => "Change Password",
 	"admin_password_updated_successfully" => "Admin password updated successfully",
 	"no_more_review_remain_to_load" => "No more review remain to load",
+	"successfully_review_submitted" => "Successfully review submitted",
+	"Review liked successfully" => "Review liked successfully",
+	"Already liked" => "Already liked",
+	"Reply added successfully" => "Reply added successfully",
+	"credentials_doesnt_match" => "Credentials doesnt match",
+	"profile_Info" => "Profile Info",
+	"my_Wishlists" => "My Wishlists",
+	"you_have_not_added_product_to_wishlist_yet" => "You have not added product to wishlist yet",
+	"explore_more" => "Explore more",
 ];

@@ -18,6 +18,7 @@ use App\Models\OrderDetail;
 use App\Models\Product;
 use App\Models\PublishingHouse;
 use App\Models\Review;
+use App\Models\ReviewReply;
 use App\Models\ShippingMethod;
 use App\Models\Shop;
 use App\Models\StockClearanceProduct;
@@ -25,6 +26,7 @@ use App\Models\Wishlist;
 use App\Services\ProductService;
 use App\Traits\CacheManagerTrait;
 use App\Traits\FileManagerTrait;
+use Illuminate\Support\Facades\DB;
 use App\Utils\CategoryManager;
 use App\Utils\Helpers;
 use App\Utils\ImageManager;
@@ -406,9 +408,23 @@ class ProductController extends Controller
     public function get_product_reviews($id)
     {
         $reviews = Review::with(['customer', 'reply'])->where(['product_id' => $id])->get();
+        
         foreach ($reviews as $item) {
             $item['attachment_full_url'] = $item->attachment_full_url;
+            
+            // Add likes count
+            $item['likes_count'] = DB::table('review_likes')->where('review_id', $item->id)->count();
+            
+            // Add replies count
+            $item['replies_count'] = ReviewReply::where('review_id', $item->id)->count();
+            
+            // Add replies with user info
+            $item['replies'] = ReviewReply::with('customer')
+                ->where('review_id', $item->id)
+                ->orderBy('created_at', 'desc')
+                ->get();
         }
+        
         return response()->json($reviews, 200);
     }
 
@@ -542,6 +558,66 @@ class ProductController extends Controller
                 $review_id = $request['order_id'] . '1';
             }
             $reviewArray['id'] = $review_id;
+            Review::create($reviewArray);
+        }
+
+        return response()->json(['message' => translate('successfully_review_submitted')], 200);
+    }
+
+    public function submit_product_review_guest(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'product_id' => 'required',
+            'comment' => 'required',
+            'rating' => 'required|integer|min:1|max:5',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
+        }
+
+        $image_array = [];
+        if (!empty($request->file('fileUpload'))) {
+            foreach ($request->file('fileUpload') as $image) {
+                if ($image != null) {
+                    $image_array[] = [
+                        'file_name' => $this->upload('review/', 'webp', $image),
+                        'storage' => getWebConfig(name: 'storage_connection_type') ?? 'public',
+                    ];
+                }
+            }
+        }
+
+        // Check if user already reviewed this product (without order_id)
+        $reviewData = Review::where([
+            'delivery_man_id' => null,
+            'customer_id' => $request->user()->id,
+            'product_id' => $request['product_id'],
+            'order_id' => null,
+        ])->first();
+
+        if ($reviewData) {
+            $reviewData->update([
+                'customer_id' => $request->user()->id,
+                'product_id' => $request['product_id'],
+                'comment' => $request['comment'],
+                'rating' => $request['rating'],
+                'attachment' => $image_array,
+            ]);
+        } else {
+            // Generate unique review ID
+            $review_id = 'guest_' . $request->user()->id . '_' . $request['product_id'] . '_' . time();
+            
+            $reviewArray = [
+                'id' => $review_id,
+                'customer_id' => $request->user()->id,
+                'order_id' => null, // No order required for guest reviews
+                'product_id' => $request['product_id'],
+                'comment' => $request['comment'],
+                'rating' => $request['rating'],
+                'attachment' => $image_array,
+            ];
+
             Review::create($reviewArray);
         }
 
@@ -851,5 +927,121 @@ class ProductController extends Controller
             'offset' => (int)($request['offset'] ?? 1),
             'products' => Helpers::product_data_formatting($products->items(), true)
         ]);
+    }
+
+    // Review Reply Functions
+    public function addReviewReply(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'review_id' => 'required|exists:reviews,id',
+            'reply_text' => 'required|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
+        }
+
+        $reply = ReviewReply::create([
+            'review_id' => $request['review_id'],
+            'added_by_id' => $request->user()->id,
+            'added_by' => 'customer',
+            'reply_text' => $request['reply_text'],
+        ]);
+
+        return response()->json([
+            'message' => translate('Reply added successfully'),
+            'reply' => $reply
+        ], 200);
+    }
+
+    public function updateReviewReply(Request $request, $reply_id)
+    {
+        $validator = Validator::make($request->all(), [
+            'reply_text' => 'required|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
+        }
+
+        $reply = ReviewReply::where([
+            'id' => $reply_id,
+            'added_by_id' => $request->user()->id,
+            'added_by' => 'customer'
+        ])->first();
+
+        if (!$reply) {
+            return response()->json(['message' => translate('Reply not found')], 404);
+        }
+
+        $reply->update(['reply_text' => $request['reply_text']]);
+
+        return response()->json([
+            'message' => translate('Reply updated successfully'),
+            'reply' => $reply
+        ], 200);
+    }
+
+    public function deleteReviewReply(Request $request, $reply_id)
+    {
+        $reply = ReviewReply::where([
+            'id' => $reply_id,
+            'added_by_id' => $request->user()->id,
+            'added_by' => 'customer'
+        ])->first();
+
+        if (!$reply) {
+            return response()->json(['message' => translate('Reply not found')], 404);
+        }
+
+        $reply->delete();
+
+        return response()->json(['message' => translate('Reply deleted successfully')], 200);
+    }
+
+    // Review Like Functions
+    public function likeReview(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'review_id' => 'required|exists:reviews,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
+        }
+
+        // Check if already liked
+        $existingLike = DB::table('review_likes')->where([
+            'review_id' => $request['review_id'],
+            'user_id' => $request->user()->id
+        ])->first();
+
+        if ($existingLike) {
+            return response()->json(['message' => translate('Already liked')], 400);
+        }
+
+        // Add like
+        DB::table('review_likes')->insert([
+            'review_id' => $request['review_id'],
+            'user_id' => $request->user()->id,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+
+        return response()->json(['message' => translate('Review liked successfully')], 200);
+    }
+
+    public function unlikeReview(Request $request, $review_id)
+    {
+        $deleted = DB::table('review_likes')->where([
+            'review_id' => $review_id,
+            'user_id' => $request->user()->id
+        ])->delete();
+
+        if ($deleted) {
+            return response()->json(['message' => translate('Review unliked successfully')], 200);
+        }
+
+        return response()->json(['message' => translate('Like not found')], 404);
     }
 }

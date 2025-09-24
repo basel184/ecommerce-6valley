@@ -16,9 +16,12 @@ export function useApi() {
     try {
       // Try common shapes exposed by i18n
       const loc = nuxtApp?.$i18n?.locale?.value || nuxtApp?.$i18n?.global?.locale || (nuxtApp?.$i18n?.global?.locale?.value)
-      if (typeof loc === 'string' && loc) return loc
+      if (typeof loc === 'string' && loc) {
+        // Map frontend locale to backend locale
+        return loc === 'ar' ? 'sa' : loc
+      }
     } catch {}
-    return 'ar'
+    return 'sa' // Default to 'sa' which is the Arabic code in database
   }
   const guestCookie = useCookie<number | null>('guest_id', { sameSite: 'lax' })
   // زامن الحالة مع الكوكي دائماً لتفادي اختلاف guest_id بين SSR وCSR
@@ -36,28 +39,28 @@ export function useApi() {
   }
   const $get = async (path: string, opts: any = {}) => {
     const url = buildUrl(path)
-    const headers = { ...authHeader, lang: localeValue() || 'ar', ...(opts.headers||{}) }
+    const headers = { ...authHeader, lang: localeValue() || 'sa', ...(opts.headers||{}) }
     console.log('[API:$get]', url, headers, { guestId: guestId?.value, guestCookie: guestCookie?.value })
     return await $fetch(url, { credentials: 'include', headers, ...opts })
   }
 
   const $post = async (path: string, body?: any, opts: any = {}) => {
     const url = buildUrl(path)
-    const headers = { ...authHeader, lang: localeValue() || 'ar', ...(opts.headers||{}) }
+    const headers = { ...authHeader, lang: localeValue() || 'sa', ...(opts.headers||{}) }
     console.log('[API:$post]', url, body, { guestId: guestId?.value, guestCookie: guestCookie?.value })
     return await $fetch(url, { method: 'POST', body, credentials: 'include', headers, ...opts })
   }
 
   const $put = async (path: string, body?: any, opts: any = {}) => {
     const url = buildUrl(path)
-    const headers = { ...authHeader, lang: localeValue() || 'ar', ...(opts.headers||{}) }
+    const headers = { ...authHeader, lang: localeValue() || 'sa', ...(opts.headers||{}) }
     console.log('[API:$put]', url, body, { guestId: guestId?.value, guestCookie: guestCookie?.value })
     return await $fetch(url, { method: 'PUT', body, credentials: 'include', headers, ...opts })
   }
 
   const $del = async (path: string, body?: any, opts: any = {}) => {
     const url = buildUrl(path)
-    const headers = { ...authHeader, lang: localeValue() || 'ar', ...(opts.headers||{}) }
+    const headers = { ...authHeader, lang: localeValue() || 'sa', ...(opts.headers||{}) }
     console.log('[API:$del]', url, body, { guestId: guestId?.value, guestCookie: guestCookie?.value })
     return await $fetch(url, { method: 'DELETE', body, credentials: 'include', headers, ...opts })
   }
