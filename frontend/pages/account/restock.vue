@@ -2,11 +2,22 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+// Types
+interface RestockRequest {
+  id: string
+  product_name: string
+  quantity: number
+  notes?: string
+  admin_notes?: string
+  status: string
+  created_at: string
+}
+
 const { t } = useI18n()
 const { $get, $post, $del } = useApi()
 
 // Restock requests data
-const restockRequests = ref([])
+const restockRequests = ref<RestockRequest[]>([])
 const loading = ref(false)
 const error = ref('')
 
@@ -95,7 +106,7 @@ const getStatusName = (status: string) => {
     rejected: { name: 'مرفوض', color: '#ef4444' },
     fulfilled: { name: 'تم التنفيذ', color: '#3b82f6' }
   }
-  return statuses[status] || { name: status, color: '#6b7280' }
+  return statuses[status as keyof typeof statuses] || { name: status, color: '#6b7280' }
 }
 
 // Format date
@@ -160,8 +171,7 @@ onMounted(() => {
 
           <!-- Requests List -->
           <div v-else class="requests-list">
-            <ClientOnly>
-              <div v-for="request in restockRequests" :key="request.id" class="request-card">
+            <div v-for="request in restockRequests" :key="request.id" class="request-card">
               <div class="request-header">
                 <div class="request-info">
                   <h3>{{ request.product_name }}</h3>
@@ -204,15 +214,14 @@ onMounted(() => {
                   إلغاء الطلب
                 </button>
               </div>
-            </ClientOnly>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Restock Form Modal -->
-    <teleport to="body">
-      <div v-if="showRestockForm" class="modal-overlay" @click.self="closeForm">
+    <div v-if="showRestockForm" class="modal-overlay" @click.self="closeForm">
         <div class="modal-content">
           <div class="modal-header">
             <h2>طلب إعادة تخزين جديد</h2>
@@ -275,7 +284,6 @@ onMounted(() => {
           </form>
         </div>
       </div>
-    </teleport>
   </div>
 </template>
 

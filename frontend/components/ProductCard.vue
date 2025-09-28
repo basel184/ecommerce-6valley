@@ -208,7 +208,8 @@ const promoChip = computed<{ text: string; tone: 'green' | 'pink' | 'blue' } | n
   const p: any = props.product || {}
   if (p?.flash_deal_status || p?.flash_deal) return { text: 'عرض اليوم الوطني', tone: 'green' }
   if (p?.bogo || p?.offer_type === 'buy_one_get_one') return { text: '1+1 مجاناً', tone: 'pink' }
-  if ((p?.order_details_count ?? 0) > 500) return { text: 'الأكثر شهرة', tone: 'green' }
+  if ((p?.order_details_count ?? 0) > 500) return { text: 'الأفضل مبيعًا', tone: 'blue' }
+  if (p?.is_bestseller) return { text: 'الأفضل مبيعًا', tone: 'blue' }
   return null
 })
 const promoText = computed(() => promoChip.value?.text || '')
@@ -228,9 +229,11 @@ const inStock = computed<boolean>(() => {
       <button class="fab wish" :class="{ on: wished }" @click="toggleWish" aria-label="Wishlist">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 21s-6.716-4.584-9.428-7.296C.86 12.99.5 11.858.5 10.68.5 7.962 2.74 5.75 5.44 5.75c1.34 0 2.64.538 3.56 1.492A5.022 5.022 0 0 1 12 5.75c1.34 0 2.64.538 3.56 1.492a4.99 4.99 0 0 1 1.492 3.438c0 1.178-.36 2.31-2.072 3.024C18.716 16.416 12 21 12 21z"/></svg>
       </button>
-      <!-- promo top center -->
-      <div v-if="promoText" class="chip" :class="promoTone">{{ promoText }}</div>
+      
       <img :src="(imgSrc as any)" :alt="(title as any)" @error="onErr" />
+      
+      <!-- promo below image -->
+      <div v-if="promoText" class="chip" :class="promoTone">{{ promoText }}</div>
       
       <!-- add/qty area bottom-left; lock if out of stock -->
       <div class="cart-ctrl" :class="{ oos: !inStock, busy: (isBusy as any) }">
@@ -240,8 +243,10 @@ const inStock = computed<boolean>(() => {
               <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M19 13H5v-2h14v2Z"/></svg>
             </button>
             <button class="ctrl-btn" v-else @click="dec" :disabled="(isBusy as any)" aria-label="Remove">
-              <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6Zm12-14h-3.5l-1-1h-5l-1 1H4v2h16Z"/></svg>
-            </button>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bag-x" viewBox="0 0 16 16">
+              <path fill-rule="evenodd" d="M6.146 8.146a.5.5 0 0 1 .708 0L8 9.293l1.146-1.147a.5.5 0 1 1 .708.708L8.707 10l1.147 1.146a.5.5 0 0 1-.708.708L8 10.707l-1.146 1.147a.5.5 0 0 1-.708-.708L7.293 10 6.146 8.854a.5.5 0 0 1 0-.708"/>
+              <path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1m3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4zM2 5h12v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/>
+            </svg>            </button>
             <span class="qty">{{ qty }}</span>
             <button class="ctrl-btn" @click="inc" :disabled="(isBusy as any)" aria-label="Plus">
               <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M11 11V6h2v5h5v2h-5v5h-2v-5H6v-2z"/></svg>
@@ -249,7 +254,9 @@ const inStock = computed<boolean>(() => {
           </template>
           <template v-else>
             <button class="ctrl-btn" @click="handleAdd" :disabled="(isBusy as any)" aria-label="Add to cart">
-              <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M10 20a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm10 0a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM5.1 5l.4 2h13a1 1 0 0 1 .98 1.2l-1.2 6a2 2 0 0 1-1.97 1.6H8a2 2 0 0 1-1.97-1.6L4.2 4H2V2h2.6a1 1 0 0 1 .98.8L5.1 5zM12 7v3h3v2h-3v3h-2v-3H7V10h3V7h2z"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-bag" viewBox="0 0 16 16">
+                <path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1m3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4zM2 5h12v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/>
+              </svg>
             </button>
           </template>
         </template>
@@ -261,56 +268,306 @@ const inStock = computed<boolean>(() => {
         <span v-if="(isBusy as any)" class="mini-spin" aria-hidden="true"></span>
       </div>
     </div>
+    
     <div class="info">
+      <!-- Brand and Title -->
       <div class="brand" v-if="brandName">{{ brandName }}</div>
-      <div class="title">{{ title }}</div>
       <div class="meta">
         <div class="stars" aria-label="rating">
-          <span class="count">({{ reviewsCount }})</span>
           <span class="star" :class="{ on: true }">★</span>
           <b class="rating-num">{{ (rating as any)?.toFixed ? (rating as any).toFixed(1) : rating }}</b>
+          <span class="count">({{ reviewsCount }})</span>
         </div>
       </div>
-      <span v-if="hasDiscount" class="old">{{ formatPrice((oldPrice as any)) }}</span>
-      <div class="price-row">
-        <div v-if="hasDiscount" class="badge">-{{ discountPercent }}%</div>
-        <span class="price final">{{ formatPrice((finalPrice as any)) }} {{ currencySymbol }}</span>
+      <div class="title">{{ title }}</div>
+      
+      <!-- Pricing -->
+      <div class="pricing-section">
+        <div class="price-row">
+          <span class="price final">{{ formatPrice((finalPrice as any)) }} {{ currencySymbol }}</span>
+          <div v-if="hasDiscount" class="badge">-{{ discountPercent }}%</div>
+        </div>
+        <div v-if="hasDiscount" class="old-price-row">
+          <span class="old">{{ formatPrice((oldPrice as any)) }} {{ currencySymbol }}</span>
+          <span class="save-amount">حفظ {{ formatPrice((oldPrice as any) - (finalPrice as any)) }} {{ currencySymbol }}</span>
+        </div>
       </div>
     </div>
   </NuxtLink>
 </template>
 
 <style scoped>
-.card { display:block; border:1px solid #eee; border-radius:14px; overflow:hidden; background:#fff; transition: transform .12s ease, box-shadow .12s ease; direction: rtl }
-.card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.08) }
-.thumb { aspect-ratio: 1 / 1; background:#fafafa; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative }
-img { width:100%; height:100%; object-fit:contain }
-.badge { background:#ef4444; color:#fff; font-weight:700; font-size:12px; padding:4px 6px; border-radius:8px }
-.chip { position:absolute; inset-inline: 25%; top:10px; text-align:center; padding:4px 10px; font-size:12px; font-weight:700; border-radius:999px; color:#fff }
-.chip.green{ background:#2b8a3e }
-.chip.pink{ background:#db2777 }
-.chip.blue{ background:#2563eb }
-.fab { position:absolute; width:34px; height:34px; border-radius:999px; display:flex; align-items:center; justify-content:center; background:#fff; color:#374151; border:1px solid #e5e7eb; box-shadow:0 2px 8px rgba(0,0,0,.05); cursor:pointer; transition: transform .12s ease }
-.fab:hover { transform: scale(1.05) }
-.fab.wish { left:10px; top:10px }
-.fab.wish.on { color:#ef4444; border-color:#fecaca; background:#fff0f0 }
-.cart-ctrl { position:absolute; left:10px; bottom:10px; display:inline-flex; align-items:center; gap:10px; background:#fff; border:1px solid #e5e7eb; border-radius:999px; padding:6px 10px; box-shadow:0 2px 8px rgba(0,0,0,.05) }
-.cart-ctrl.oos { opacity:.75 }
-.cart-ctrl.busy { opacity: .85 }
-.ctrl-btn { width:28px; height:28px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #e5e7eb; background:#fff; cursor:pointer }
-.ctrl-btn[disabled] { opacity:.5; cursor: not-allowed }
-.qty { min-width: 18px; text-align:center; font-weight:700 }
-.lock { display:inline-flex; align-items:center; justify-content:center; color:#6b7280 }
-.mini-spin { width:14px; height:14px; border-radius:50%; border:2px solid #e5e7eb; border-top-color:#9ca3af; animation: spin .8s linear infinite }
-@keyframes spin { to { transform: rotate(360deg) } }
-.info { padding:10px }
-.brand { color:#6b7280; font-weight:700; font-size:14px; margin-bottom:4px; text-align:right }
-.title { font-weight:700; color:#111827; margin-bottom:6px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; text-align:right }
-.meta { display:flex; align-items:center; justify-content:flex-start; gap:6px; margin-bottom:6px }
-.stars { color:#f59e0b; font-size:12px; display:flex; align-items:center; gap:6px }
-.rating-num { color:#111827; font-weight:700; font-size:12px }
-.count { color:#6b7280; font-size:12px }
-.price-row { display: flex;align-items: center;gap: 8px;flex-direction: row-reverse;justify-content: flex-end; }
-.price.final { color:#e11d48; font-weight:800 }
-.old { color:#9ca3af; text-decoration: line-through }
+.card { 
+  display: block; 
+  border: 1px solid #e5e7eb; 
+  border-radius: 12px; 
+  overflow: hidden; 
+  background: #fff; 
+  transition: transform 0.2s ease, box-shadow 0.2s ease; 
+  direction: rtl;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.card:hover { 
+  transform: translateY(-2px); 
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); 
+}
+
+.thumb { 
+  aspect-ratio: 1 / 1; 
+  background: #f9fafb; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  overflow: hidden; 
+  position: relative;
+  padding: 20px;
+}
+img { 
+  width: 100%; 
+  height: 100%; 
+  object-fit: contain; 
+  max-width: 200px;
+  max-height: 200px;
+}
+
+.badge { 
+  background: #10b981; 
+  color: #fff; 
+  font-weight: 700; 
+  font-size: 11px; 
+  padding: 4px 8px; 
+  border-radius: 6px;
+  display: inline-block;
+  min-width: 32px;
+  text-align: center;
+}
+
+.chip { 
+  position: absolute; 
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 10px; 
+  text-align: center; 
+  padding: 6px 12px; 
+  font-size: 12px; 
+  font-weight: 700; 
+  border-radius: 20px; 
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.chip.green { background: #10b981 }
+.chip.pink { background: #ec4899 }
+.chip.blue { background: #3b82f6 }
+
+.fab { 
+  position: absolute; 
+  width: 32px; 
+  height: 32px; 
+  border-radius: 50%; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  background: rgba(255, 255, 255, 0.9); 
+  color: #374151; 
+  border: 1px solid #e5e7eb; 
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); 
+  cursor: pointer; 
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+.fab:hover { 
+  transform: scale(1.1); 
+  background: #fff;
+}
+.fab.wish { 
+  left: 12px; 
+  top: 12px; 
+}
+.fab.wish.on { 
+  color: #ef4444; 
+  border-color: #fecaca; 
+  background: #fff0f0; 
+}
+
+.cart-ctrl { 
+  position: absolute; 
+  left: 12px; 
+  bottom: 12px; 
+  display: inline-flex; 
+  align-items: center; 
+  gap: 8px; 
+  background: rgba(255, 255, 255, 0.95); 
+  border: 1px solid #ffffff; 
+  border-radius: 20px; 
+  padding: 6px; 
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
+}
+.cart-ctrl.oos { opacity: 0.75 }
+.cart-ctrl.busy { opacity: 0.85 }
+
+.ctrl-btn { 
+  width: 35px; 
+  height: 30px; 
+  border-radius: 50%; 
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center; 
+  border: 1px solid #ffffff; 
+  background: #fff; 
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.ctrl-btn:hover {
+  background: #f3f4f6;
+}
+.ctrl-btn[disabled] { 
+  opacity: 0.5; 
+  cursor: not-allowed; 
+}
+
+.qty { 
+  min-width: 20px; 
+  text-align: center; 
+  font-weight: 700; 
+  font-size: 14px;
+}
+
+.lock { 
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center; 
+  color: #6b7280; 
+}
+
+.mini-spin { 
+  width: 14px; 
+  height: 14px; 
+  border-radius: 50%; 
+  border: 2px solid #e5e7eb; 
+  border-top-color: #9ca3af; 
+  animation: spin 0.8s linear infinite; 
+}
+
+@keyframes spin { 
+  to { transform: rotate(360deg) } 
+}
+
+.info { 
+  padding: 16px; 
+}
+
+.meta { 
+  display: inline-block; 
+  width : 50%;
+  margin-bottom: 8px; 
+}
+
+.stars { 
+  color: #f59e0b; 
+  font-size: 14px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: flex-end;
+  gap: 4px; 
+}
+
+.star {
+  font-size: 16px;
+}
+
+.rating-num { 
+  color: #111827; 
+  font-weight: 700; 
+  font-size: 14px; 
+}
+
+.count { 
+  color: #6b7280; 
+  font-size: 12px; 
+}
+
+.brand { 
+  color: #6b7280; 
+  font-weight: 700; 
+  font-size: 14px; 
+  margin-bottom: 4px; 
+  display: inline-block;
+  width : 50%;
+}
+
+.title { 
+  font-weight: 600; 
+  color: #111827; 
+  margin-bottom: 12px; 
+  line-height: 1.4; 
+  display: -webkit-box; 
+  -webkit-line-clamp: 2; 
+  line-clamp: 2; 
+  -webkit-box-orient: vertical; 
+  overflow: hidden; 
+  text-align: right;
+  font-size: 14px;
+}
+
+.pricing-section {
+  margin-bottom: 12px;
+}
+
+.price-row { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.price.final { 
+  color: #ef4444; 
+  font-weight: 800; 
+  font-size: 18px;
+}
+
+.old-price-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.old { 
+  color: #9ca3af; 
+  text-decoration: line-through; 
+  font-size: 14px;
+}
+
+.save-amount {
+  color: #10b981;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.add-to-cart-btn {
+  width: 100%;
+  background: #fff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.add-to-cart-btn:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.add-to-cart-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 </style>

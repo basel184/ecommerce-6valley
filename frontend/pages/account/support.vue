@@ -2,11 +2,23 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+// Types
+interface SupportTicket {
+  id: string
+  subject: string
+  type: string
+  priority: string
+  status: string
+  description: string
+  created_at: string
+  updated_at: string
+}
+
 const { t } = useI18n()
 const { $get, $post } = useApi()
 
 // Support tickets data
-const tickets = ref([])
+const tickets = ref<SupportTicket[]>([])
 const loading = ref(false)
 const error = ref('')
 
@@ -17,7 +29,7 @@ const supportForm = ref({
   type: 'general',
   priority: 'medium',
   description: '',
-  attachments: []
+  attachments: null as FileList | null
 })
 
 const formLoading = ref(false)
@@ -63,7 +75,7 @@ const openSupportForm = () => {
     type: 'general',
     priority: 'medium',
     description: '',
-    attachments: []
+    attachments: null
   }
   formError.value = ''
   showSupportForm.value = true
@@ -112,7 +124,7 @@ const getStatusName = (status: string) => {
     resolved: { name: 'تم الحل', color: '#10b981' },
     closed: { name: 'مغلق', color: '#6b7280' }
   }
-  return statuses[status] || { name: status, color: '#6b7280' }
+  return statuses[status as keyof typeof statuses] || { name: status, color: '#6b7280' }
 }
 
 // Format date
@@ -179,8 +191,7 @@ onMounted(() => {
 
           <!-- Tickets List -->
           <div v-else class="tickets-list">
-            <ClientOnly>
-              <div v-for="ticket in tickets" :key="ticket.id" class="ticket-card">
+            <div v-for="ticket in tickets" :key="ticket.id" class="ticket-card">
               <div class="ticket-header">
                 <div class="ticket-info">
                   <h3>{{ ticket.subject }}</h3>
@@ -229,15 +240,14 @@ onMounted(() => {
                   عرض التفاصيل
                 </NuxtLink>
               </div>
-            </ClientOnly>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Support Form Modal -->
-    <teleport to="body">
-      <div v-if="showSupportForm" class="modal-overlay" @click.self="closeForm">
+    <div v-if="showSupportForm" class="modal-overlay" @click.self="closeForm">
         <div class="modal-content">
           <div class="modal-header">
             <h2>تذكرة دعم جديدة</h2>
@@ -299,7 +309,7 @@ onMounted(() => {
                 type="file"
                 multiple
                 accept="image/*,.pdf,.doc,.docx"
-                @change="supportForm.attachments = $event.target.files"
+                @change="supportForm.attachments = ($event.target as HTMLInputElement).files"
                 :disabled="formLoading"
               />
               <p class="help-text">يمكنك رفع الصور أو المستندات (PDF, Word)</p>
@@ -321,7 +331,6 @@ onMounted(() => {
           </form>
         </div>
       </div>
-    </teleport>
   </div>
 </template>
 
@@ -587,6 +596,7 @@ onMounted(() => {
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

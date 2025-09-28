@@ -2,6 +2,31 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+// Types
+interface OrderItem {
+  id: string
+  product_id: string
+  quantity: number
+  price: number
+  product?: {
+    name: string
+    thumbnail: string
+  }
+}
+
+interface TrackingResult {
+  id: string
+  order_status: string
+  created_at: string
+  order_amount: number
+  shipping_cost?: number
+  discount_amount?: number
+  payment_method?: string
+  tracking_number?: string
+  delivery_address?: string
+  details: OrderItem[]
+}
+
 const { t } = useI18n()
 const { $get } = useApi()
 
@@ -11,7 +36,7 @@ const trackingForm = ref({
   phone: ''
 })
 
-const trackingResult = ref(null)
+const trackingResult = ref<TrackingResult | null>(null)
 const loading = ref(false)
 const error = ref('')
 
@@ -57,7 +82,7 @@ const getStatusName = (status: string) => {
     cancelled: { name: 'ملغي', color: '#ef4444', icon: '❌' },
     returned: { name: 'مرتجع', color: '#6b7280', icon: '↩️' }
   }
-  return statuses[status] || { name: status, color: '#6b7280', icon: '❓' }
+  return statuses[status as keyof typeof statuses] || { name: status, color: '#6b7280', icon: '❓' }
 }
 
 // Format date
@@ -91,7 +116,7 @@ const getTrackingProgress = (status: string) => {
     cancelled: 0,
     returned: 0
   }
-  return progressMap[status] || 0
+  return progressMap[status as keyof typeof progressMap] || 0
 }
 
 // Get tracking steps
@@ -173,8 +198,7 @@ const isStepCurrent = (stepKey: string, currentStatus: string) => {
 
         <!-- Tracking Result -->
         <div v-if="trackingResult" class="tracking-result-section">
-          <ClientOnly>
-            <div class="result-card">
+          <div class="result-card">
             <div class="order-header">
               <div class="order-info">
                 <h3>طلب #{{ trackingResult.id }}</h3>
@@ -304,11 +328,11 @@ const isStepCurrent = (stepKey: string, currentStatus: string) => {
                 </a>
               </div>
             </div>
-          </ClientOnly>
+          </div>
         </div>
 
         <!-- No Results -->
-        <div v-else-if="!loading && !error" class="no-results">
+        <div v-if="!trackingResult && !loading && !error" class="no-results">
           <div class="no-results-icon">🔍</div>
           <h3>ابحث عن طلبك</h3>
           <p>أدخل رقم الطلب أو رقم الهاتف أعلاه لتتبع حالة طلبك</p>

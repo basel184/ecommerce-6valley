@@ -2,11 +2,31 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+// Types
+interface WishlistItem {
+  id: string
+  product_id: string
+  created_at: string
+  product?: {
+    name: string
+    thumbnail: string
+    brand?: {
+      name: string
+    }
+    unit_price: number
+    discount?: number
+    current_stock: number
+    reviews_avg_rating?: number
+    reviews_count?: number
+    slug: string
+  }
+}
+
 const { t } = useI18n()
 const { $get, $del } = useApi()
 
 // Wishlist data
-const wishlist = ref([])
+const wishlist = ref<WishlistItem[]>([])
 const loading = ref(false)
 const error = ref('')
 
@@ -112,8 +132,7 @@ onMounted(() => {
 
         <!-- Wishlist Grid -->
         <div v-else class="wishlist-grid">
-          <ClientOnly>
-            <div v-for="item in wishlist" :key="item.id" class="wishlist-item">
+          <div v-for="item in wishlist" :key="item.id" class="wishlist-item">
             <div class="item-image">
               <img 
                 :src="item.product?.thumbnail || '/placeholder-product.jpg'" 
@@ -178,7 +197,7 @@ onMounted(() => {
                 <span class="added-date">أضيف في: {{ formatDate(item.created_at) }}</span>
               </div>
             </div>
-          </ClientOnly>
+          </div>
         </div>
       </div>
     </div>

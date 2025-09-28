@@ -2,11 +2,33 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+// Types
+interface OrderItem {
+  id: string
+  product_id: string
+  quantity: number
+  price: number
+  product?: {
+    name: string
+    thumbnail: string
+  }
+}
+
+interface Order {
+  id: string
+  order_status: string
+  created_at: string
+  order_amount: number
+  shipping_cost?: number
+  discount_amount?: number
+  details: OrderItem[]
+}
+
 const { t } = useI18n()
 const { $get } = useApi()
 
 // Orders data
-const orders = ref([])
+const orders = ref<Order[]>([])
 const loading = ref(false)
 const error = ref('')
 
@@ -56,7 +78,7 @@ const formatCurrency = (amount: number) => {
 
 // Get order status
 const getOrderStatus = (status: string) => {
-  return orderStatuses[status] || { name: status, color: '#6b7280' }
+  return orderStatuses[status as keyof typeof orderStatuses] || { name: status, color: '#6b7280' }
 }
 
 // Load data on mount
@@ -98,8 +120,7 @@ onMounted(() => {
 
         <!-- Orders List -->
         <div v-else class="orders-list">
-          <ClientOnly>
-            <div v-for="order in orders" :key="order.id" class="order-card">
+          <div v-for="order in orders" :key="order.id" class="order-card">
             <div class="order-header">
               <div class="order-info">
                 <h3>طلب #{{ order.id }}</h3>
@@ -163,7 +184,7 @@ onMounted(() => {
                 إلغاء الطلب
               </button>
             </div>
-          </ClientOnly>
+          </div>
         </div>
       </div>
     </div>
