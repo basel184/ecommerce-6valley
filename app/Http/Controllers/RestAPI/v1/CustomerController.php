@@ -216,17 +216,16 @@ class CustomerController extends Controller
 
     public function wish_list(Request $request)
     {
-
-        $wishlist = Wishlist::whereHas('wishlistProduct', function ($q) {
-            return $q;
-        })->with(['productFullInfo' => function ($query) {
-            return $query->with(['clearanceSale' => function ($query) {
+        $wishlist = Wishlist::with(['productFullInfo' => function ($query) {
+            $query->with(['clearanceSale' => function ($query) {
                 return $query->active();
             }]);
         }])->where('customer_id', $request->user()->id)->get();
 
         $wishlist->map(function ($data) {
-            $data['productFullInfo'] = Helpers::product_data_formatting(json_decode($data['productFullInfo'], true));
+            if ($data->productFullInfo) {
+                $data['productFullInfo'] = Helpers::product_data_formatting($data->productFullInfo->toArray());
+            }
             return $data;
         });
 
@@ -251,7 +250,6 @@ class CustomerController extends Controller
             'address_type' => 'required',
             'address' => 'required',
             'city' => 'required',
-            'zip' => 'required',
             'country' => 'required',
             'phone' => 'required',
             'latitude' => 'required',
@@ -269,7 +267,7 @@ class CustomerController extends Controller
         if ($country_restrict_status && !self::delivery_country_exist_check($request->input('country'))) {
             return response()->json(['message' => translate('Delivery_unavailable_for_this_country')], 403);
 
-        } elseif ($zip_restrict_status && !self::delivery_zipcode_exist_check($request->input('zip'))) {
+        } elseif ($zip_restrict_status && $request->has('zip') && !self::delivery_zipcode_exist_check($request->input('zip'))) {
             return response()->json(['message' => translate('Delivery_unavailable_for_this_zip_code_area')], 403);
         }
 
@@ -282,7 +280,7 @@ class CustomerController extends Controller
             'address_type' => $request->address_type,
             'address' => $request->address,
             'city' => $request->city,
-            'zip' => $request->zip,
+            'zip' => $request->zip ?? '',
             'country' => $request->country,
             'phone' => $request->phone,
             'email' => $request->email,
@@ -314,7 +312,7 @@ class CustomerController extends Controller
 
         if ($countryRestrictStatus && !self::delivery_country_exist_check($request->input('country'))) {
             return response()->json(['error_type' => 'address', 'message' => translate('Delivery_unavailable_for_this_country')], 403);
-        } elseif ($zipRestrictStatus && !self::delivery_zipcode_exist_check($request->input('zip'))) {
+        } elseif ($zipRestrictStatus && $request->has('zip') && !self::delivery_zipcode_exist_check($request->input('zip'))) {
             return response()->json(['error_type' => 'zip_code', 'message' => translate('Delivery_unavailable_for_this_zip_code_area')], 403);
         }
 
@@ -325,7 +323,7 @@ class CustomerController extends Controller
             'address_type' => $request['address_type'],
             'address' => $request['address'],
             'city' => $request['city'],
-            'zip' => $request['zip'],
+            'zip' => $request['zip'] ?? $shippingAddress->zip,
             'country' => $request['country'],
             'phone' => $request['phone'],
             'latitude' => $request['latitude'],
@@ -341,7 +339,7 @@ class CustomerController extends Controller
     public function delete_address(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'address_id' => 'required',
+            'id' => 'required',
         ]);
 
         if ($validator->fails()) {
@@ -350,7 +348,7 @@ class CustomerController extends Controller
 
         $user = Helpers::getCustomerInformation($request);
 
-        $shipping_address = ShippingAddress::where(['id' => $request['address_id']])
+        $shipping_address = ShippingAddress::where(['id' => $request['id']])
             ->when($user == 'offline', function ($query) use ($request) {
                 $query->where(['customer_id' => $request->guest_id, 'is_guest' => 1]);
             })

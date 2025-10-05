@@ -1414,4 +1414,5 @@ return [
 	"my_Wishlists" => "My Wishlists",
 	"you_have_not_added_product_to_wishlist_yet" => "You have not added product to wishlist yet",
 	"explore_more" => "Explore more",
+	"Cart key or ID is required!" => "Cart key or ID is required!",
 ];

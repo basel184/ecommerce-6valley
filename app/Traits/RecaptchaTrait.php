@@ -28,7 +28,8 @@ trait RecaptchaTrait
         $builder->setMaxAngle(25);
         $builder->setMaxBehindLines(0);
         $builder->setMaxFrontLines(0);
-        $builder->build($width = 100, $height = 40, $font = null);
+        // Build without specifying font to use default
+        $builder->build($width = 100, $height = 40);
         return $builder;
     }
 

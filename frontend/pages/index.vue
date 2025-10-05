@@ -104,7 +104,7 @@ const hasHeroSideBanners = computed(() => Array.isArray((heroSideBanners as any)
 
 // Minimal image helpers for side banners
 const cfg2 = useRuntimeConfig() as any
-const assetBase = (cfg2?.public?.apiBase || '').replace(/\/api(?:\/v\d+)?$/, '')
+const assetBase = (cfg2?.public?.apiBase || 'http://127.0.0.1:8000/api').replace(/\/api(?:\/v\d+)?$/, '')
 // Prefer Laravel web host for server-rendered pages (collections). Fallbacks handle dev (3000->8000)
 const webBase = computed(() => {
   let base = assetBase || ''
@@ -118,8 +118,21 @@ const webBase = computed(() => {
   return base
 })
 const fixPath = (s: string) => {
-  let p = s.trim().replace(/\\/g, '/').replace(/^public\//, '').replace(/^app\/public\//, 'storage/')
+  let p = s.trim().replace(/\\/g, '/')
+  
+  // Remove common prefixes
+  p = p.replace(/^public\//, '')
+  p = p.replace(/^app\/public\//, '')
+  p = p.replace(/^storage\/app\/public\//, '')
+  
+  // Clean up slashes
   p = p.replace(/\/+/g, '/').replace(/^\//, '')
+  
+  // Ensure it starts with storage/
+  if (!p.startsWith('storage/')) {
+    p = 'storage/' + p
+  }
+  
   return p
 }
 const toSrc = (u: any): string => {
@@ -239,16 +252,11 @@ const onImgErr = (e: any) => {
         <ProductGrid :products="featuredDealItems" />
       </section>
 
-  <section v-if="hasLatestItems" class="section card">
+      <section v-if="hasLatestItems" class="section card">
         <div class="section-header">
           <h2>أحدث المنتجات</h2>
         </div>
         <ProductGrid :products="latestItems" />
-      </section>
-
-      <!-- Deal of the day spotlight -->
-  <section v-if="dealOfTheDay" class="section">
-        <DealOfTheDayCard :product="dealOfTheDay" />
       </section>
 
       <!-- Just for you -->

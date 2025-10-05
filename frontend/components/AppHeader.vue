@@ -78,6 +78,17 @@ const categories = computed<Cat[]>(() => {
   return fallbackCats
 })
 
+// Get first 5 main categories for navigation
+const mainCategories = computed<Cat[]>(() => {
+  const cats = categories.value
+  // If we have categories from API, take first 5
+  if (cats.length > 0) {
+    return cats.slice(0, 5)
+  }
+  // Fallback to predefined categories
+  return fallbackCats.slice(0, 5)
+})
+
 // UI State
 const showCats = ref(false)
 const searchOpen = ref(false)
@@ -85,8 +96,11 @@ const q = ref('')
 const loadingSearch = ref(false)
 const suggestions = ref<string[]>([])
 const products = ref<any[]>([])
-const langOpen = ref(false)
+const showLang = ref(false)
 const loginModalOpen = ref(false)
+const hoveredCategory = ref<any>(null)
+const hoveredMegaCategory = ref<any>(null)
+const keepMegaMenuOpen = ref(false)
 // Keep a lightweight dictionary for suggestions/typo-fix
 const recentNames = ref<string[]>([])
 
@@ -97,6 +111,20 @@ const loginForm = ref({
 })
 const loginLoading = ref(false)
 const loginError = ref('')
+
+// Register modal state
+const showRegisterModal = ref(false)
+const registerForm = ref({
+  f_name: '',
+  l_name: '',
+  email: '',
+  phone: '',
+  password: '',
+  password_confirmation: '',
+  referral_code: ''
+})
+const registerLoading = ref(false)
+const registerError = ref('')
 
 // Build a dictionary from categories + popular chips + recent product names
 const dictionary = computed<string[]>(() => {
@@ -237,15 +265,39 @@ function goSearch(term?: string) {
 }
 
 function goCategory(cat: Cat) {
-  // Navigate to Shop with category filter applied
+  // Navigate to category page or shop with category filter
+  if (cat.id) {
   router.push({ path: '/shop', query: { category: String(cat.id) } })
+  }
   showCats.value = false
 }
+
+function handleMegaMenuLeave() {
+  // Add a small delay to allow moving to subcategories
+  setTimeout(() => {
+    if (!keepMegaMenuOpen.value) {
+      showCats.value = false
+      hoveredMegaCategory.value = null
+    }
+  }, 150)
+}
+
+// Reset keepMegaMenuOpen when showCats changes
+watch(showCats, (newValue) => {
+  if (!newValue) {
+    keepMegaMenuOpen.value = false
+    hoveredMegaCategory.value = null
+  }
+})
 
 function changeLocale(loc: 'ar' | 'en') {
   const path = switchLocalePath(loc)
   router.push(path)
-  langOpen.value = false
+  showLang.value = false
+}
+
+function switchTo(loc: 'ar' | 'en') {
+  changeLocale(loc)
 }
 
 // Login functions
@@ -309,108 +361,316 @@ function closeLoginModal() {
   loginError.value = ''
   loginForm.value = { email: '', password: '' }
 }
+
+// Register functions
+function openRegisterModal() {
+  showRegisterModal.value = true
+  loginModalOpen.value = false
+  registerError.value = ''
+  registerForm.value = {
+    f_name: '',
+    l_name: '',
+    email: '',
+    phone: '',
+    password: '',
+    password_confirmation: '',
+    referral_code: ''
+  }
+}
+
+function closeRegisterModal() {
+  showRegisterModal.value = false
+  registerError.value = ''
+  registerForm.value = {
+    f_name: '',
+    l_name: '',
+    email: '',
+    phone: '',
+    password: '',
+    password_confirmation: '',
+    referral_code: ''
+  }
+}
+
+async function handleRegisterSubmit() {
+  if (!registerForm.value.f_name || !registerForm.value.l_name || !registerForm.value.email || !registerForm.value.phone || !registerForm.value.password) {
+    registerError.value = 'جميع الحقول مطلوبة'
+    return
+  }
+
+  if (registerForm.value.password !== registerForm.value.password_confirmation) {
+    registerError.value = 'كلمة المرور غير متطابقة'
+    return
+  }
+
+  if (registerForm.value.password.length < 6) {
+    registerError.value = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'
+    return
+  }
+
+  registerLoading.value = true
+  registerError.value = ''
+
+  try {
+    const response = await $post('v1/auth/register', {
+      f_name: registerForm.value.f_name,
+      l_name: registerForm.value.l_name,
+      email: registerForm.value.email,
+      phone: registerForm.value.phone,
+      password: registerForm.value.password,
+      referral_code: registerForm.value.referral_code || null
+    })
+
+    if (response?.token) {
+      // Login successful
+      auth.setToken(response.token)
+      try {
+        const userInfo = await $get('v1/customer/info')
+        if (userInfo) {
+          auth.setUser(userInfo)
+        }
+      } catch (e) {
+        auth.setUser(response.user || response.data)
+      }
+      closeRegisterModal()
+    } else if (response?.temporary_token) {
+      // Need verification
+      registerError.value = 'تم إنشاء الحساب بنجاح. يرجى التحقق من بريدك الإلكتروني أو رقم الهاتف'
+      setTimeout(() => {
+        closeRegisterModal()
+      }, 3000)
+    }
+  } catch (error: any) {
+    console.error('Register error:', error)
+    if (error?.data?.errors && Array.isArray(error.data.errors)) {
+      const errorMessages = error.data.errors.map((err: any) => err.message).join(', ')
+      registerError.value = errorMessages
+    } else {
+      registerError.value = error?.data?.message || 'خطأ في إنشاء الحساب'
+    }
+  } finally {
+    registerLoading.value = false
+  }
+}
 </script>
 
 <template>
   <header class="app-header" :dir="uiDir">
+    <!-- Main Header -->
+    <div class="main-header">
     <div class="container">
-      <!-- Left group: logo + categories -->
-      <div class="left">
+        <!-- Logo Section -->
+        <div class="logo-section">
         <NuxtLink to="/" class="brand">
+            <div class="logo-container">
           <span class="logo-circle">N</span>
-          <span class="brand-text">{{ brandName }}</span>
-        </NuxtLink>
-
-        <div class="cats" @mouseenter="showCats = true" @mouseleave="showCats = false">
-          <button class="cats-btn" type="button">
-            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
-            <span>{{ t('categories') }}</span>
-          </button>
-
-          <div v-show="showCats" class="mega" @mouseenter="showCats = true" @mouseleave="showCats = false">
-            <div class="mega-col" v-for="c in categories" :key="c.id">
-              <div class="mega-title" @click="goCategory(c)">{{ c.name }}</div>
-              <div class="mega-item" v-for="sc in c.children || []" :key="sc.id" @click="goCategory(sc)">
-                {{ sc.name }}
+              <div class="brand-text">
+                <span class="brand-arabic">نايس ون</span>
+                <span class="brand-english">NICE ONE</span>
               </div>
             </div>
-            <div class="mega-side">
-              <img src="https://dummyimage.com/220x160/f5f5f5/888&text=Promo" alt="promo" />
-              <div class="brands">
-                <img v-for="(b,i) in brandLogos" :key="i" :src="b" alt="brand" />
-              </div>
-            </div>
-          </div>
-        </div>
+          </NuxtLink>
       </div>
 
-      <!-- Middle: search -->
-    <div class="middle" @click="searchOpen = true">
+        <!-- Search Section -->
+        <div class="search-section">
+          <div class="search-container" @click="searchOpen = true">
         <div class="search-box">
-          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.6-.58 3.07-1.54 4.2l.2.2h.84l5 5l-1.5 1.5l-5-5v-.84l-.2-.2A6.516 6.516 0 0 1 9.5 16A6.5 6.5 0 0 1 3 9.5A6.5 6.5 0 0 1 9.5 3m0 2A4.5 4.5 0 0 0 5 9.5A4.5 4.5 0 0 0 9.5 14A4.5 4.5 0 0 0 14 9.5A4.5 4.5 0 0 0 9.5 5Z"/></svg>
-      <input type="text" :placeholder="t('search.placeholder')" readonly />
+              <svg width="20" height="20" viewBox="0 0 24 24" class="search-icon">
+                <path fill="currentColor" d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.6-.58 3.07-1.54 4.2l.2.2h.84l5 5l-1.5 1.5l-5-5v-.84l-.2-.2A6.516 6.516 0 0 1 9.5 16A6.5 6.5 0 0 1 3 9.5A6.5 6.5 0 0 1 9.5 3m0 2A4.5 4.5 0 0 0 5 9.5A4.5 4.5 0 0 0 9.5 14A4.5 4.5 0 0 0 14 9.5A4.5 4.5 0 0 0 9.5 5Z"/>
+              </svg>
+              <input type="text" :placeholder="t('search.placeholder')" readonly class="search-input" />
         </div>
       </div>
-
-      <!-- Right: quick actions -->
-      <nav class="right">
-        <div class="action hide-sm">
-          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2l4 4h-3v6h-2V6H8l4-4Z"/></svg>
-          <span>{{ t('deliver.to') }}</span>
         </div>
 
-        <NuxtLink class="action hide-sm" to="/brands">{{ t('brands') }}</NuxtLink>
-
-        <div class="lang" @mouseenter="langOpen = true" @mouseleave="langOpen = false">
-          <button class="lang-btn" type="button">
-            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2Zm7.93 9h-3.09a15.63 15.63 0 0 0-1.19-6.05A8.009 8.009 0 0 1 19.93 11ZM12 4.07A13.6 13.6 0 0 1 13.86 11H10.14A13.6 13.6 0 0 1 12 4.07ZM4.07 13H7.2a15.63 15.63 0 0 0 1.19 6.05A8.009 8.009 0 0 1 4.07 13Zm0-2A8.009 8.009 0 0 1 8.39 4.95 15.63 15.63 0 0 0 7.2 11ZM12 19.93A13.6 13.6 0 0 1 10.14 13h3.72A13.6 13.6 0 0 1 12 19.93ZM14.61 19.05A15.63 15.63 0 0 0 15.8 13h3.23a8.009 8.009 0 0 1-4.42 6.05Z"/></svg>
+        <!-- Actions Section -->
+        <div class="actions-section">
+          <!-- Language Selector -->
+          <div class="lang" @click="showLang = !showLang">
+            <button class="lang-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
+              </svg>
             <span>{{ currentLangCode }}</span>
-            <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M7 10l5 5l5-5z"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" class="chevron">
+                <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+              </svg>
           </button>
 
-          <div v-if="langOpen" class="lang-menu" :dir="uiDir">
-            <div class="lang-title">{{ t('languages') || 'اللغات' }}</div>
+            <div v-show="showLang" class="lang-menu">
+              <div class="lang-title">{{ t('select_language') || 'اختر اللغة' }}</div>
             <div class="lang-grid">
-              <button class="lang-card" type="button" @click="changeLocale('ar')">
+                <div class="lang-card" :class="{ checked: isAr }" @click="switchTo('ar')">
                 <div class="row">
-                  <div class="label">العربية</div>
                   <div class="meta">
-                    <span class="badge">السعودية</span>
-                    <span class="flag" aria-hidden>🇸🇦</span>
-                    <span class="radio" :class="{ checked: isAr }" aria-hidden></span>
+                      <span class="flag">🇸🇦</span>
+                      <span class="label">العربية</span>
                   </div>
+                    <div class="radio" :class="{ checked: isAr }"></div>
                 </div>
-              </button>
-              <button class="lang-card" type="button" @click="changeLocale('en')">
+                </div>
+                <div class="lang-card" :class="{ checked: !isAr }" @click="switchTo('en')">
                 <div class="row">
-                  <div class="label">English</div>
                   <div class="meta">
-                    <span class="flag" aria-hidden>🇬🇧</span>
-                    <span class="radio" :class="{ checked: !isAr }" aria-hidden></span>
+                      <span class="flag">🇺🇸</span>
+                      <span class="label">English</span>
                   </div>
+                    <div class="radio" :class="{ checked: !isAr }"></div>
                 </div>
-              </button>
+                </div>
             </div>
           </div>
         </div>
 
-        <NuxtLink class="icon-btn" to="/cart" aria-label="Cart">
-          <svg width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M7 18a2 2 0 1 0 0 4a2 2 0 0 0 0-4m10 0a2 2 0 1 0 .001 4.001A2 2 0 0 0 17 18M7.16 14h9.53c.75 0 1.4-.42 1.73-1.05L22 7H6.21L5.27 5H2v2h2l3.6 7.59l-1.35 2.44A2 2 0 0 0 8 20h12v-2H8l1.1-2h8.59l-1.45 2H7.16Z"/></svg>
-        </NuxtLink>
-
+          <!-- User Account -->
         <div class="profile">
           <template v-if="auth?.user?.value">
-            <NuxtLink class="icon-btn" to="/account" aria-label="Account">
-              <svg width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M12 19.2c-2.5 0-7.5 1.25-7.5 3.75V25h15v-2.05c0-2.5-5-3.75-7.5-3.75M12 2a5 5 0 0 0-5 5a5 5 0 0 0 10 0a5 5 0 0 0-5-5Z"/></svg>
+              <NuxtLink class="profile-btn" to="/account">
+                <svg width="20" height="20" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M12 19.2c-2.5 0-7.5 1.25-7.5 3.75V25h15v-2.05c0-2.5-5-3.75-7.5-3.75M12 2a5 5 0 0 0-5 5a5 5 0 0 0 10 0a5 5 0 0 0-5-5Z"/>
+                </svg>
+                <span>{{ t('my_account') || 'حسابي' }}</span>
             </NuxtLink>
-            <button class="text-btn" @click="auth.setToken(null); auth.setUser(null)">{{ t('logout') }}</button>
+              <button class="logout-btn" @click="auth.setToken(null); auth.setUser(null)">
+                {{ t('logout') }}
+              </button>
           </template>
           <template v-else>
-            <button class="text-btn" @click="openLoginModal">{{ t('login') }}</button>
+              <button class="login-btn" @click="openLoginModal">
+                <svg width="20" height="20" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M12 19.2c-2.5 0-7.5 1.25-7.5 3.75V25h15v-2.05c0-2.5-5-3.75-7.5-3.75M12 2a5 5 0 0 0-5 5a5 5 0 0 0 10 0a5 5 0 0 0-5-5Z"/>
+                </svg>
+                <span>{{ t('login') || 'تسجيل دخول' }}</span>
+              </button>
           </template>
         </div>
-      </nav>
+
+          <!-- Notifications -->
+          <button class="action-btn notification-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+            </svg>
+            <span class="notification-badge">3</span>
+          </button>
+
+          <!-- Cart -->
+          <NuxtLink to="/cart" class="action-btn cart-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M7 18a2 2 0 1 0 0 4a2 2 0 0 0 0-4m10 0a2 2 0 1 0 .001 4.001A2 2 0 0 0 17 18M7.16 14h9.53c.75 0 1.4-.42 1.73-1.05L22 7H6.21L5.27 5H2v2h2l3.6 7.59l-1.35 2.44A2 2 0 0 0 8 20h12v-2H8l1.1-2h8.59l-1.45 2H7.16Z"/>
+            </svg>
+            <span class="cart-badge">2</span>
+          </NuxtLink>
+        </div>
+      </div>
     </div>
+
+    <!-- Navigation Bar -->
+    <nav class="nav-bar">
+      <div class="container">
+        <div class="nav-left">
+          <div class="categories-dropdown" @mouseenter="showCats = true" @mouseleave="showCats = false">
+            <button class="categories-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/>
+              </svg>
+              <span>{{ t('all_categories') || 'جميع الأقسام' }}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" class="chevron">
+                <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+              </svg>
+            </button>
+
+            <div v-show="showCats" class="mega-menu" @mouseenter="showCats = true" @mouseleave="handleMegaMenuLeave">
+              <div class="mega-content">
+                <!-- Main Categories Column -->
+                <div class="mega-main-categories">
+                  <div 
+                    v-for="c in categories" 
+                    :key="c.id" 
+                    class="mega-category-item"
+                    @mouseenter="hoveredMegaCategory = c; keepMegaMenuOpen = true"
+                    @mouseleave="keepMegaMenuOpen = false"
+                  >
+                    <div class="mega-title" @click="goCategory(c)">
+                      {{ c.name }}
+                      <svg v-if="c.children && c.children.length > 0" width="12" height="12" viewBox="0 0 24 24" class="mega-arrow">
+                        <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Subcategories Area -->
+                <div class="mega-subcategories-area" @mouseenter="keepMegaMenuOpen = true" @mouseleave="keepMegaMenuOpen = false">
+                  <div v-if="hoveredMegaCategory && hoveredMegaCategory.children && hoveredMegaCategory.children.length > 0" class="mega-subcategories">
+                    <div class="mega-subcategories-content">
+                      <div 
+                        v-for="sc in hoveredMegaCategory.children" 
+                        :key="sc.id" 
+                        class="mega-subcategory-item"
+                        @click="goCategory(sc)"
+                      >
+                        {{ sc.name }}
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else class="mega-placeholder">
+                    <img src="https://dummyimage.com/220x160/f5f5f5/888&text=Promo" alt="promo" />
+                    <div class="brands">
+                      <img v-for="(b,i) in brandLogos" :key="i" :src="b" alt="brand" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-center">
+          <div class="nav-links">
+            <div 
+              v-for="category in mainCategories" 
+              :key="category.id" 
+              class="nav-item"
+              @mouseenter="hoveredCategory = category"
+              @mouseleave="hoveredCategory = null"
+            >
+              <NuxtLink 
+                :to="`/category/${category.id}`" 
+                class="nav-link"
+                @click="goCategory(category)"
+              >
+                {{ category.name }}
+                <svg v-if="category.children && category.children.length > 0" width="12" height="12" viewBox="0 0 24 24" class="nav-arrow">
+                  <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                </svg>
+              </NuxtLink>
+              
+              <!-- Subcategories Dropdown -->
+              <div 
+                v-if="hoveredCategory && hoveredCategory.id === category.id && category.children && category.children.length > 0" 
+                class="subcategories-dropdown"
+                @mouseenter="hoveredCategory = category"
+                @mouseleave="hoveredCategory = null"
+              >
+                <div class="subcategories-content">
+                  <NuxtLink 
+                    v-for="subcategory in category.children" 
+                    :key="subcategory.id"
+                    :to="`/category/${subcategory.id}`" 
+                    class="subcategory-link"
+                    @click="goCategory(subcategory)"
+                  >
+                    {{ subcategory.name }}
+                  </NuxtLink>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
 
     <!-- Search Overlay -->
     <teleport to="body">
@@ -505,9 +765,127 @@ function closeLoginModal() {
           
           <div class="login-footer">
             <p>{{ t('no_account') || 'ليس لديك حساب؟' }} 
-              <NuxtLink to="/auth/register" @click="closeLoginModal">
+              <a href="#" @click.prevent="openRegisterModal">
                 {{ t('register') || 'إنشاء حساب' }}
-              </NuxtLink>
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </teleport>
+
+    <!-- Register Modal -->
+    <teleport to="body">
+      <div v-if="showRegisterModal" class="login-overlay" @click.self="closeRegisterModal">
+        <div class="login-modal" :dir="uiDir">
+          <div class="login-header">
+            <h2>{{ t('register') || 'إنشاء حساب جديد' }}</h2>
+            <button class="close-btn" @click="closeRegisterModal">
+              <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/></svg>
+            </button>
+          </div>
+          
+          <form @submit.prevent="handleRegisterSubmit" class="login-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="f_name">{{ t('first_name') || 'الاسم الأول' }} *</label>
+                <input 
+                  id="f_name" 
+                  v-model="registerForm.f_name" 
+                  type="text" 
+                  :placeholder="t('first_name') || 'الاسم الأول'" 
+                  required 
+                  :disabled="registerLoading" 
+                />
+              </div>
+              <div class="form-group">
+                <label for="l_name">{{ t('last_name') || 'الاسم الأخير' }} *</label>
+                <input 
+                  id="l_name" 
+                  v-model="registerForm.l_name" 
+                  type="text" 
+                  :placeholder="t('last_name') || 'الاسم الأخير'" 
+                  required 
+                  :disabled="registerLoading" 
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="register_email">{{ t('email') || 'البريد الإلكتروني' }} *</label>
+              <input 
+                id="register_email" 
+                v-model="registerForm.email" 
+                type="email" 
+                :placeholder="t('email') || 'البريد الإلكتروني'" 
+                required 
+                :disabled="registerLoading" 
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="register_phone">{{ t('phone') || 'رقم الهاتف' }} *</label>
+              <input 
+                id="register_phone" 
+                v-model="registerForm.phone" 
+                type="tel" 
+                :placeholder="t('phone') || 'رقم الهاتف'" 
+                required 
+                :disabled="registerLoading" 
+              />
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="register_password">{{ t('password') || 'كلمة المرور' }} *</label>
+                <input 
+                  id="register_password" 
+                  v-model="registerForm.password" 
+                  type="password" 
+                  :placeholder="t('password') || 'كلمة المرور'" 
+                  required 
+                  :disabled="registerLoading" 
+                />
+              </div>
+              <div class="form-group">
+                <label for="password_confirmation">{{ t('confirm_password') || 'تأكيد كلمة المرور' }} *</label>
+                <input 
+                  id="password_confirmation" 
+                  v-model="registerForm.password_confirmation" 
+                  type="password" 
+                  :placeholder="t('confirm_password') || 'تأكيد كلمة المرور'" 
+                  required 
+                  :disabled="registerLoading" 
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="referral_code">{{ t('referral_code') || 'كود الإحالة' }} ({{ t('optional') || 'اختياري' }})</label>
+              <input 
+                id="referral_code" 
+                v-model="registerForm.referral_code" 
+                type="text" 
+                :placeholder="t('referral_code') || 'كود الإحالة'" 
+                :disabled="registerLoading" 
+              />
+            </div>
+
+            <div v-if="registerError" class="error-message">
+              {{ registerError }}
+            </div>
+
+            <button type="submit" class="login-btn" :disabled="registerLoading">
+              <span v-if="registerLoading">{{ t('creating_account') || 'جاري إنشاء الحساب...' }}</span>
+              <span v-else>{{ t('register') || 'إنشاء حساب' }}</span>
+            </button>
+          </form>
+          
+          <div class="login-footer">
+            <p>{{ t('have_account') || 'لديك حساب بالفعل؟' }} 
+              <a href="#" @click.prevent="openLoginModal(); closeRegisterModal()">
+                {{ t('login') || 'تسجيل الدخول' }}
+              </a>
             </p>
           </div>
         </div>
@@ -541,30 +919,820 @@ function closeLoginModal() {
 </template>
 
 <style scoped>
-.app-header { border-bottom: 1px solid #eee; background: #fff; position: sticky; top: 0; z-index: 40; }
-.container { max-width: 1200px; margin: 0 auto; padding: 12px 16px; display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 16px; align-items: center; }
-.left { display: flex; align-items: center; gap: 12px; }
-.brand { display: inline-flex; align-items: center; gap: 8px; color: inherit; text-decoration: none; }
-.logo-circle { width: 32px; height: 32px; border-radius: 50%; background: #000; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
-.brand-text { font-weight: 700; }
+/* Main Header Container */
+.app-header { 
+  background: #fff; 
+  position: sticky; 
+  top: 0; 
+  z-index: 50;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid #f0f0f0;
+}
 
-.cats { position: relative; }
-.cats-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #eee; border-radius: 10px; background: #fafafa; cursor: pointer; }
-.cats-btn:hover { background: #f3f3f3; }
+.container { 
+  max-width: 1200px; 
+  margin: 0 auto; 
+  padding: 0 20px; 
+}
 
-.mega { position: absolute; top: calc(100% + 0); right: 0; background: #fff; border: 1px solid #eee; box-shadow: 0 8px 24px rgba(0,0,0,.08); border-radius: 14px; padding: 16px; display: grid; grid-template-columns: repeat(4, minmax(160px, 1fr)) 240px; gap: 16px; width: min(1000px, 90vw); }
-.mega-col { padding: 8px 0; }
-.mega-title { font-weight: 700; margin-bottom: 10px; cursor: pointer; }
-.mega-item { padding: 6px 0; color: #333; cursor: pointer; }
-.mega-item:hover { color: #6b46c1; }
-.mega-side { display: grid; gap: 12px; align-content: start; }
-.mega-side img { width: 100%; border-radius: 12px; border: 1px solid #eee; }
-.brands { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.brands img { width: 100%; height: 60px; object-fit: contain; background: #fff; border: 1px solid #eee; border-radius: 12px; }
+/* Top Bar */
+.top-bar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 8px 0;
+  font-size: 14px;
+}
 
-.middle .search-box { display: flex; align-items: center; gap: 8px; border: 1px solid #eee; border-radius: 999px; padding: 10px 14px; background: #fafafa; cursor: text; }
-.middle input { border: 0; outline: 0; background: transparent; width: 100%; }
+.top-bar .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
+.tagline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.tagline-icon {
+  color: #ffd700;
+}
+
+.delivery-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.delivery-info:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.location-icon {
+  color: #ffd700;
+}
+
+.chevron {
+  transition: transform 0.2s ease;
+}
+
+.delivery-info:hover .chevron {
+  transform: rotate(180deg);
+}
+
+/* Main Header */
+.main-header {
+  padding: 16px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.main-header .container {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 24px;
+  align-items: center;
+}
+
+/* Logo Section */
+.logo-section {
+  display: flex;
+  align-items: center;
+}
+
+.brand {
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+
+.brand:hover {
+  transform: scale(1.02);
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 20px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-arabic {
+  font-weight: 700;
+  font-size: 18px;
+  color: #333;
+  line-height: 1.2;
+}
+
+.brand-english {
+  font-weight: 600;
+  font-size: 14px;
+  color: #666;
+  letter-spacing: 1px;
+}
+
+/* Search Section */
+.search-section {
+  display: flex;
+  justify-content: center;
+}
+
+.search-container {
+  width: 100%;
+  max-width: 500px;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 2px solid #f0f0f0;
+  border-radius: 50px;
+  padding: 14px 20px;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.search-box:hover {
+  border-color: #667eea;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.1);
+}
+
+.search-icon {
+  color: #999;
+  transition: color 0.2s ease;
+}
+
+.search-box:hover .search-icon {
+  color: #667eea;
+}
+
+.search-input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  width: 100%;
+  font-size: 16px;
+  color: #333;
+}
+
+.search-input::placeholder {
+  color: #999;
+}
+
+/* Actions Section */
+.actions-section {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+/* Language Selector */
+.lang {
+  position: relative;
+}
+
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  color: #333;
+}
+
+.lang-btn:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.lang-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  width: 280px;
+  padding: 16px;
+  z-index: 60;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lang-title {
+  text-align: center;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 12px;
+  font-size: 16px;
+}
+
+.lang-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.lang-card {
+  background: #fff;
+  border: 2px solid #f0f0f0;
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lang-card:hover {
+  border-color: #e0e0e0;
+  background: #f8f9ff;
+}
+
+.lang-card.checked {
+  border-color: #667eea;
+  background: #f8f9ff;
+}
+
+.lang-card .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lang-card .meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lang-card .label {
+  font-weight: 600;
+  color: #333;
+}
+
+.lang-card .flag {
+  font-size: 20px;
+}
+
+.lang-card .radio {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #ddd;
+  border-radius: 50%;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.lang-card .radio.checked {
+  border-color: #667eea;
+}
+
+.lang-card .radio.checked::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  background: #667eea;
+  border-radius: 50%;
+}
+
+/* Profile Section */
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-btn, .login-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  background: #fff;
+  color: #333;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.profile-btn:hover, .login-btn:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
+  color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.logout-btn {
+  background: transparent;
+  border: 1px solid #e0e0e0;
+  color: #666;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.logout-btn:hover {
+  background: #fee;
+  border-color: #fcc;
+  color: #c53030;
+}
+
+/* Action Buttons */
+.action-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.action-btn:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
+  color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.notification-badge, .cart-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ff4757;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  border: 2px solid #fff;
+}
+
+/* Navigation Bar */
+.nav-bar {
+  background: #f8f9fa;
+  padding: 16px 0;
+  border-bottom: 1px solid #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.nav-bar .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+}
+
+.categories-dropdown {
+  position: relative;
+}
+
+.categories-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  color: #333;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.categories-btn:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
+  color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.nav-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.nav-links {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-height: 40px;
+}
+
+.nav-link {
+  color: #333;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  position: relative;
+  white-space: nowrap;
+  font-size: 15px;
+  display: inline-block;
+  text-align: center;
+  min-width: 80px;
+}
+
+.nav-link:hover {
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 3px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+.nav-link:hover::after {
+  width: 90%;
+}
+
+.nav-link:active {
+  transform: translateY(-1px);
+}
+
+/* Navigation Item with Dropdown */
+.nav-item {
+  position: relative;
+  display: inline-block;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-arrow {
+  transition: transform 0.2s ease;
+  opacity: 0.7;
+}
+
+.nav-item:hover .nav-arrow {
+  transform: rotate(180deg);
+  opacity: 1;
+}
+
+/* Subcategories Dropdown */
+.subcategories-dropdown {
+  position: absolute;
+  top: 80%;
+  left: 0;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  min-width: 400px;
+  animation: slideDown 0.2s ease-out;
+  margin-top: 8px;
+}
+
+.subcategories-content {
+  padding: 16px 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.subcategory-link {
+  display: block;
+  padding: 12px 16px;
+  color: #333;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid #f0f0f0;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subcategory-link:hover {
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+  border-left-color: #667eea;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.subcategory-link:nth-child(3n+1) {
+  border-top-left-radius: 12px;
+}
+
+.subcategory-link:nth-child(3n) {
+  border-top-right-radius: 12px;
+}
+
+.subcategory-link:nth-last-child(-n+3) {
+  border-bottom: none;
+}
+
+.subcategory-link:nth-last-child(1) {
+  border-bottom-left-radius: 12px;
+}
+
+.subcategory-link:nth-last-child(2) {
+  border-bottom-right-radius: 12px;
+}
+
+/* RTL Support for Subcategories */
+[dir="rtl"] .subcategories-dropdown {
+  left: auto;
+  right: 0;
+}
+
+[dir="rtl"] .subcategory-link {
+  border-left: none;
+  border-right: 3px solid transparent;
+  text-align: center;
+}
+
+[dir="rtl"] .subcategory-link:hover {
+  border-left-color: transparent;
+  border-right-color: #667eea;
+}
+
+[dir="rtl"] .subcategory-link:nth-child(3n+1) {
+  border-top-left-radius: 0;
+  border-top-right-radius: 12px;
+}
+
+[dir="rtl"] .subcategory-link:nth-child(3n) {
+  border-top-right-radius: 0;
+  border-top-left-radius: 12px;
+}
+
+[dir="rtl"] .subcategory-link:nth-last-child(1) {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 12px;
+}
+
+[dir="rtl"] .subcategory-link:nth-last-child(2) {
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 12px;
+}
+
+/* Mega Menu */
+.mega-menu {
+  position: absolute;
+  top: calc(100% + 0px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  width: min(1000px, 90vw);
+  z-index: 60;
+  animation: slideDown 0.3s ease-out;
+}
+
+.mega-content {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 0;
+  padding: 0;
+  min-height: 400px;
+}
+
+/* Main Categories Column */
+.mega-main-categories {
+  background: #f8f9ff;
+  border-radius: 16px 0 0 16px;
+  padding: 20px 0;
+  border-right: 1px solid #e0e0e0;
+}
+
+.mega-category-item {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.mega-category-item:hover {
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.mega-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  color: #333;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-right: 3px solid transparent;
+  font-size: 15px;
+}
+
+.mega-title:hover {
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+  border-right-color: #667eea;
+}
+
+.mega-arrow {
+  transition: transform 0.2s ease;
+  opacity: 0.7;
+}
+
+.mega-category-item:hover .mega-arrow {
+  transform: rotate(90deg);
+  opacity: 1;
+}
+
+/* Subcategories Area */
+.mega-subcategories-area {
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+}
+
+.mega-subcategories {
+  width: 100%;
+}
+
+.mega-subcategories-content {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  max-height: 350px;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.mega-subcategory-item {
+  display: block;
+  padding: 12px 16px;
+  color: #333;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid #f0f0f0;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  position: relative;
+}
+
+.mega-subcategory-item:hover {
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+  border-left-color: #667eea;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+  z-index: 2;
+}
+
+.mega-subcategory-item:nth-child(3n+1) {
+  border-top-left-radius: 12px;
+}
+
+.mega-subcategory-item:nth-child(3n) {
+  border-top-right-radius: 12px;
+}
+
+.mega-subcategory-item:nth-last-child(-n+3) {
+  border-bottom: none;
+}
+
+.mega-subcategory-item:nth-last-child(1) {
+  border-bottom-left-radius: 12px;
+}
+
+.mega-subcategory-item:nth-last-child(2) {
+  border-bottom-right-radius: 12px;
+}
+
+/* Placeholder when no subcategory is hovered */
+.mega-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 350px;
+}
+
+.mega-placeholder img {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.brands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.brands img {
+  width: 60px;
+  height: 30px;
+  object-fit: contain;
+  border-radius: 6px;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.brands img:hover {
+  opacity: 1;
+}
+
+/* Right Actions (Legacy) */
 .right { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
 .action { display: inline-flex; align-items: center; gap: 8px; color: #555; }
 .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid #eee; }
@@ -685,6 +1853,12 @@ function closeLoginModal() {
   margin-bottom: 20px;
 }
 
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
 .form-group label {
   display: block;
   margin-bottom: 6px;
@@ -769,13 +1943,124 @@ function closeLoginModal() {
   text-decoration: underline;
 }
 
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .main-header .container {
+    grid-template-columns: 1fr 1.5fr 1fr;
+    gap: 16px;
+  }
+  
+  .nav-links {
+    gap: 20px;
+  }
+  
+  .mega-content {
+    grid-template-columns: repeat(3, minmax(140px, 1fr)) 200px;
+    gap: 20px;
+    padding: 20px;
+  }
+}
+
 @media (max-width: 768px) {
-  .container { grid-template-columns: 1fr; gap: 8px; }
-  .left { justify-content: space-between; }
-  .middle { grid-row: 2; }
-  .right .hide-sm { display: none; }
-  .mega { display: none !important; }
-  .bottom-nav { display: flex; }
+  .container {
+    padding: 0 16px;
+  }
+  
+  .top-bar {
+    font-size: 12px;
+    padding: 6px 0;
+  }
+  
+  .main-header .container {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 12px 0;
+  }
+  
+  .logo-section {
+    justify-content: center;
+  }
+  
+  .search-section {
+    order: 2;
+  }
+  
+  .actions-section {
+    order: 3;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .nav-bar {
+    display: block;
+  }
+  
+  .nav-links {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    min-height: 35px;
+  }
+  
+  .nav-link {
+    padding: 6px 10px;
+    font-size: 13px;
+    min-width: fit-content;
+  }
+  
+  .subcategories-dropdown {
+    min-width: 320px;
+    margin-top: 6px;
+  }
+  
+  .subcategories-content {
+    grid-template-columns: repeat(2, 1fr);
+    max-height: 250px;
+  }
+  
+  .subcategory-link {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  
+  .mega-content {
+    grid-template-columns: 180px 1fr;
+  }
+  
+  .mega-subcategories-content {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .bottom-nav {
+    display: flex;
+  }
+  
+  .mega-menu {
+    display: none !important;
+  }
+  
+  .lang-menu {
+    width: 260px;
+    right: -20px;
+  }
+  
+  .profile-btn, .login-btn {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+  
+  .action-btn {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .notification-badge, .cart-badge {
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+  }
   
   .login-modal {
     margin: 10px;
@@ -787,6 +2072,208 @@ function closeLoginModal() {
   .login-footer {
     padding-left: 20px;
     padding-right: 20px;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 12px;
+  }
+  
+  .top-bar {
+    display: none;
+  }
+  
+  .main-header {
+    padding: 12px 0;
+  }
+  
+  .logo-container {
+    gap: 8px;
+  }
+  
+  .logo-circle {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+  
+  .brand-arabic {
+    font-size: 16px;
+  }
+  
+  .brand-english {
+    font-size: 12px;
+  }
+  
+  .search-box {
+    padding: 12px 16px;
+  }
+  
+  .search-input {
+    font-size: 14px;
+  }
+  
+  .actions-section {
+    gap: 8px;
+  }
+  
+  .profile-btn, .login-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  
+  .action-btn {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .lang-btn {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  
+  .lang-menu {
+    width: 240px;
+    right: -10px;
+  }
+  
+  .nav-bar {
+    padding: 10px 0;
+  }
+  
+  .nav-links {
+    gap: 12px;
+  }
+  
+  .nav-link {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  
+  .subcategories-dropdown {
+    min-width: 280px;
+    margin-top: 4px;
+  }
+  
+  .subcategories-content {
+    grid-template-columns: 1fr;
+    max-height: 200px;
+  }
+  
+  .subcategory-link {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  .mega-content {
+    grid-template-columns: 1fr;
+    min-height: 300px;
+  }
+  
+  .mega-main-categories {
+    border-radius: 16px 16px 0 0;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .mega-subcategories-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .app-header {
+    background: #1a1a1a;
+    border-bottom-color: #333;
+  }
+  
+  .top-bar {
+    background: linear-gradient(135deg, #4c63d2 0%, #5a4fcf 100%);
+  }
+  
+  .nav-bar {
+    background: #2a2a2a;
+    border-bottom-color: #333;
+  }
+  
+  .brand-arabic, .brand-english {
+    color: #fff;
+  }
+  
+  .search-box {
+    background: #2a2a2a;
+    border-color: #444;
+  }
+  
+  .search-input {
+    color: #fff;
+  }
+  
+  .search-input::placeholder {
+    color: #999;
+  }
+  
+  .lang-btn, .profile-btn, .login-btn, .action-btn {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #fff;
+  }
+  
+  
+  .nav-link {
+    color: #fff;
+  }
+  
+  .subcategories-dropdown {
+    background: #2a2a2a;
+    border-color: #444;
+  }
+  
+  .subcategory-link {
+    color: #fff;
+    border-bottom-color: #444;
+  }
+  
+  .subcategory-link:hover {
+    background: rgba(102, 126, 234, 0.2);
+    color: #667eea;
+  }
+  
+  .mega-main-categories {
+    background: #1a1a1a;
+    border-right-color: #444;
+  }
+  
+  .mega-title {
+    color: #fff;
+  }
+  
+  .mega-title:hover {
+    background: rgba(102, 126, 234, 0.2);
+    color: #667eea;
+  }
+  
+  .mega-subcategory-item {
+    color: #000000;
+    border-bottom-color: #444;
+  }
+  
+  .mega-subcategory-item:hover {
+    background: rgba(102, 126, 234, 0.2);
+    color: #667eea;
+  }
+  
+  .categories-btn {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #fff;
   }
 }
 </style>

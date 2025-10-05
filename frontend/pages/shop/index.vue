@@ -171,24 +171,6 @@ const priceRangeText = computed(() => {
       </div>
 
       <div class="box">
-        <div class="box-title">الترتيب</div>
-        <select v-model="sort_by" class="select">
-          <option value="latest">الأحدث</option>
-          <option value="low-high">السعر: الأقل للأعلى</option>
-          <option value="high-low">السعر: الأعلى للأقل</option>
-          <option value="a-z">أ-ي</option>
-          <option value="z-a">ي-أ</option>
-        </select>
-      </div>
-
-      <div class="box">
-        <div class="box-title">النوع</div>
-        <label class="chk"><input type="radio" value="" v-model="product_type" /> الكل</label>
-        <label class="chk"><input type="radio" value="physical" v-model="product_type" /> منتجات مادية</label>
-        <label class="chk"><input type="radio" value="digital" v-model="product_type" /> منتجات رقمية</label>
-      </div>
-
-      <div class="box">
         <div class="box-title">السعر</div>
         <div class="row">
           <input class="num" type="number" v-model.number="price_min" placeholder="حد أدنى" />

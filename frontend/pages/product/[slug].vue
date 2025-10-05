@@ -18,6 +18,11 @@ const SwiperSlideComponent = SwiperSlide
 const route = useRoute()
 const { details: getDetails, related: getRelated } = useProducts() as any
 const cart = useCart()
+
+// Wishlist data
+const isInWishlist = ref(false)
+const wishlistLoading = ref(false)
+
 // Reviews data
 const reviews = ref<any[]>([])
 const reviewsLoading = ref(false)
@@ -34,10 +39,23 @@ const recommended = ref<any[]>([])
 
 // Helpers to normalize media paths similar to ProductCard
 const cfg = useRuntimeConfig() as any
-const assetBase = (cfg?.public?.apiBase || '').replace(/\/api(?:\/v\d+)?$/, '')
+const assetBase = (cfg?.public?.apiBase || 'http://127.0.0.1:8000/api').replace(/\/api(?:\/v\d+)?$/, '')
 const fixPath = (s: string) => {
-  let p = (s || '').trim().replace(/\\/g, '/').replace(/^public\//, '').replace(/^app\/public\//, 'storage/')
+  let p = (s || '').trim().replace(/\\/g, '/')
+  
+  // Remove common prefixes
+  p = p.replace(/^public\//, '')
+  p = p.replace(/^app\/public\//, '')
+  p = p.replace(/^storage\/app\/public\//, '')
+  
+  // Clean up slashes
   p = p.replace(/\/+/g, '/').replace(/^\//, '')
+  
+  // Ensure it starts with storage/
+  if (!p.startsWith('storage/')) {
+    p = 'storage/' + p
+  }
+  
   return p
 }
 const normalize = (s: any): string => {
@@ -216,7 +234,7 @@ const activeTab = ref('description')
 const showLoginModal = ref(false)
 const auth = useAuth()
 const { t } = useI18n()
-const { $get, $post } = useApi()
+const { $get, $post, $del } = useApi()
 
 // Login form
 const loginForm = ref({ email: '', password: '' })
@@ -392,10 +410,112 @@ const unlikeReview = async (reviewId: string) => {
   }
 }
 
+// Register modal state
+const showRegisterModal = ref(false)
+const registerForm = ref({
+  f_name: '',
+  l_name: '',
+  email: '',
+  phone: '',
+  password: '',
+  password_confirmation: '',
+  referral_code: ''
+})
+const registerLoading = ref(false)
+const registerError = ref('')
+
 // Handle register
 const handleRegister = () => {
-  // TODO: Implement register logic
-  console.log('Redirect to register')
+  showLoginModal.value = false
+  showRegisterModal.value = true
+  registerError.value = ''
+  registerForm.value = {
+    f_name: '',
+    l_name: '',
+    email: '',
+    phone: '',
+    password: '',
+    password_confirmation: '',
+    referral_code: ''
+  }
+}
+
+// Close register modal
+const closeRegisterModal = () => {
+  showRegisterModal.value = false
+  registerError.value = ''
+  registerForm.value = {
+    f_name: '',
+    l_name: '',
+    email: '',
+    phone: '',
+    password: '',
+    password_confirmation: '',
+    referral_code: ''
+  }
+}
+
+// Handle register submission
+const handleRegisterSubmit = async () => {
+  if (!registerForm.value.f_name || !registerForm.value.l_name || !registerForm.value.email || !registerForm.value.phone || !registerForm.value.password) {
+    registerError.value = 'جميع الحقول مطلوبة'
+    return
+  }
+
+  if (registerForm.value.password !== registerForm.value.password_confirmation) {
+    registerError.value = 'كلمة المرور غير متطابقة'
+    return
+  }
+
+  if (registerForm.value.password.length < 6) {
+    registerError.value = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'
+    return
+  }
+
+  registerLoading.value = true
+  registerError.value = ''
+
+  try {
+    const response = await $post('v1/auth/register', {
+      f_name: registerForm.value.f_name,
+      l_name: registerForm.value.l_name,
+      email: registerForm.value.email,
+      phone: registerForm.value.phone,
+      password: registerForm.value.password,
+      referral_code: registerForm.value.referral_code || null
+    })
+
+    if (response?.token) {
+      // Login successful
+      auth.setToken(response.token)
+      try {
+        const userInfo = await $get('v1/customer/info')
+        if (userInfo) {
+          auth.setUser(userInfo)
+        }
+      } catch (e) {
+        auth.setUser(response.user || response.data)
+      }
+      closeRegisterModal()
+      handleLoginSuccess()
+    } else if (response?.temporary_token) {
+      // Need verification
+      registerError.value = 'تم إنشاء الحساب بنجاح. يرجى التحقق من بريدك الإلكتروني أو رقم الهاتف'
+      setTimeout(() => {
+        closeRegisterModal()
+      }, 3000)
+    }
+  } catch (error: any) {
+    console.error('Register error:', error)
+    if (error?.data?.errors && Array.isArray(error.data.errors)) {
+      const errorMessages = error.data.errors.map((err: any) => err.message).join(', ')
+      registerError.value = errorMessages
+    } else {
+      registerError.value = error?.data?.message || 'خطأ في إنشاء الحساب'
+    }
+  } finally {
+    registerLoading.value = false
+  }
 }
 
 // Handle login success
@@ -473,6 +593,56 @@ function openLoginModal() {
   showLoginModal.value = true
   loginError.value = ''
   loginForm.value = { email: '', password: '' }
+}
+
+// Wishlist functions
+async function checkWishlistStatus() {
+  if (!auth?.user?.value || !product.value?.id) return
+  
+  try {
+    const response = await $get('v1/customer/wish-list/')
+    if (response && Array.isArray(response)) {
+      isInWishlist.value = response.some((item: any) => item.product_id === product.value.id)
+    }
+  } catch (error) {
+    console.error('Error checking wishlist status:', error)
+  }
+}
+
+async function toggleWishlist() {
+  if (!auth?.user?.value) {
+    showLoginModal.value = true
+    return
+  }
+  
+  if (!product.value?.id) return
+  
+  wishlistLoading.value = true
+  
+  try {
+    if (isInWishlist.value) {
+      // Remove from wishlist
+      await $del('v1/customer/wish-list/remove', {
+        params: { product_id: product.value.id }
+      })
+      isInWishlist.value = false
+      console.log('تم إزالة المنتج من المفضلة')
+    } else {
+      // Add to wishlist
+      await $post('v1/customer/wish-list/add', {
+        product_id: product.value.id
+      })
+      isInWishlist.value = true
+      console.log('تم إضافة المنتج إلى المفضلة')
+    }
+  } catch (error: any) {
+    console.error('Error toggling wishlist:', error)
+    if (error?.data?.message) {
+      console.error('Error message:', error.data.message)
+    }
+  } finally {
+    wishlistLoading.value = false
+  }
 }
 
 function closeLoginModal() {
@@ -558,6 +728,20 @@ const load = async () => {
 
 onMounted(() => {
   load()
+  // Check wishlist status after product loads
+  watch(product, () => {
+    if (product.value) {
+      checkWishlistStatus()
+    }
+  }, { immediate: true })
+  
+  // Check wishlist status when user logs in
+  watch(() => auth?.user?.value, () => {
+    if (auth?.user?.value && product.value) {
+      checkWishlistStatus()
+    }
+  })
+  
   // Add escape key listener for modals
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -642,8 +826,19 @@ watch(slug, () => { mainIndex.value = 0; load() })
             <span v-if="brandName" class="brand">{{ brandName }}</span>
             <span class="original-badge">100% أصلي</span>
           </div>
-          <button class="wishlist-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button 
+            class="wishlist-btn" 
+            :class="{ active: isInWishlist }"
+            @click="toggleWishlist"
+            :disabled="wishlistLoading"
+          >
+            <svg v-if="wishlistLoading" width="20" height="20" viewBox="0 0 24 24" class="spinner">
+              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="31.416" stroke-dashoffset="31.416">
+                <animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416" repeatCount="indefinite"/>
+                <animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416" repeatCount="indefinite"/>
+              </circle>
+            </svg>
+            <svg v-else width="20" height="20" viewBox="0 0 24 24" :fill="isInWishlist ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
           </button>
@@ -835,12 +1030,6 @@ watch(slug, () => { mainIndex.value = 0; load() })
                   </svg>
                   رد ({{ review.replies_count || 0 }})
                 </button>
-                <button class="action-btn" @click="likeReview(review.id)">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M7.5 21H2V9h5.5v12zm7.25-18h-5.5v18h5.5V3zM22 9h-5.5v12H22V9z"/>
-                  </svg>
-                  إعجاب ({{ review.likes_count || 0 }})
-                </button>
               </div>
             </div>
           </div>
@@ -905,6 +1094,120 @@ watch(slug, () => { mainIndex.value = 0; load() })
           
           <div class="login-footer">
             <p>ليس لديك حساب؟ <a href="#" @click.prevent="handleRegister">إنشاء حساب جديد</a></p>
+          </div>
+        </div>
+      </div>
+    </teleport>
+
+    <!-- Register Modal -->
+    <teleport to="body">
+      <div v-if="showRegisterModal" class="login-overlay" @click.self="closeRegisterModal">
+        <div class="login-modal" dir="rtl">
+          <div class="login-header">
+            <h2>إنشاء حساب جديد</h2>
+            <button class="close-btn" @click="closeRegisterModal">
+              <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/></svg>
+            </button>
+          </div>
+          
+          <form @submit.prevent="handleRegisterSubmit" class="login-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="f_name">الاسم الأول *</label>
+                <input 
+                  id="f_name" 
+                  v-model="registerForm.f_name" 
+                  type="text" 
+                  placeholder="الاسم الأول" 
+                  required 
+                  :disabled="registerLoading" 
+                />
+              </div>
+              <div class="form-group">
+                <label for="l_name">الاسم الأخير *</label>
+                <input 
+                  id="l_name" 
+                  v-model="registerForm.l_name" 
+                  type="text" 
+                  placeholder="الاسم الأخير" 
+                  required 
+                  :disabled="registerLoading" 
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="register_email">البريد الإلكتروني *</label>
+              <input 
+                id="register_email" 
+                v-model="registerForm.email" 
+                type="email" 
+                placeholder="البريد الإلكتروني" 
+                required 
+                :disabled="registerLoading" 
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="register_phone">رقم الهاتف *</label>
+              <input 
+                id="register_phone" 
+                v-model="registerForm.phone" 
+                type="tel" 
+                placeholder="رقم الهاتف" 
+                required 
+                :disabled="registerLoading" 
+              />
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="register_password">كلمة المرور *</label>
+                <input 
+                  id="register_password" 
+                  v-model="registerForm.password" 
+                  type="password" 
+                  placeholder="كلمة المرور" 
+                  required 
+                  :disabled="registerLoading" 
+                />
+              </div>
+              <div class="form-group">
+                <label for="password_confirmation">تأكيد كلمة المرور *</label>
+                <input 
+                  id="password_confirmation" 
+                  v-model="registerForm.password_confirmation" 
+                  type="password" 
+                  placeholder="تأكيد كلمة المرور" 
+                  required 
+                  :disabled="registerLoading" 
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="referral_code">كود الإحالة (اختياري)</label>
+              <input 
+                id="referral_code" 
+                v-model="registerForm.referral_code" 
+                type="text" 
+                placeholder="كود الإحالة" 
+                :disabled="registerLoading" 
+              />
+            </div>
+
+            <div v-if="registerError" class="error-message">
+              {{ registerError }}
+            </div>
+
+            <button type="submit" class="login-btn" :disabled="registerLoading">
+              <span v-if="registerLoading">جاري إنشاء الحساب...</span>
+              <span v-else>إنشاء حساب</span>
+            </button>
+          </form>
+          
+          <div class="login-footer">
+            <p>لديك حساب بالفعل؟ <a href="#" @click.prevent="showLoginModal = true; closeRegisterModal()">تسجيل الدخول</a></p>
           </div>
         </div>
       </div>
@@ -1097,8 +1400,39 @@ watch(slug, () => { mainIndex.value = 0; load() })
   .brand-info{ display:flex; align-items:center; gap:12px }
   .brand{ font-size:18px; font-weight:600; color:#6b7280 }
   .original-badge{ background:#e5f7e5; color:#16a34a; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600 }
-  .wishlist-btn{ background:none; border:none; cursor:pointer; color:#6b7280; transition:color 0.2s }
-  .wishlist-btn:hover{ color:#ef4444 }
+  .wishlist-btn{ 
+    background:none; 
+    border:none; 
+    cursor:pointer; 
+    color:#6b7280; 
+    transition:all 0.3s ease;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .wishlist-btn:hover{ 
+    color:#ef4444; 
+    background: rgba(239, 68, 68, 0.1);
+    transform: scale(1.1);
+  }
+  .wishlist-btn.active {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
+  .wishlist-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  .wishlist-btn .spinner {
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
 
   .title{ font-size:24px; font-weight:700; color:#111827; margin:0 0 16px; line-height:1.3 }
 
@@ -1514,9 +1848,15 @@ watch(slug, () => { mainIndex.value = 0; load() })
     padding: 24px;
   }
 
-  .form-group {
-    margin-bottom: 20px;
-  }
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
 
   .form-group label {
     display: block;
@@ -1594,6 +1934,11 @@ watch(slug, () => { mainIndex.value = 0; load() })
 
   .login-footer a:hover {
     text-decoration: underline;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 
   /* Review Modal */

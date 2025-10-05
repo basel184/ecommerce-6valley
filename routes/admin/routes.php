@@ -143,7 +143,7 @@ Route::controller(FirebaseController::class)->group(function () {
 
 Route::group(['prefix' => 'login'], function () {
     Route::get('{loginUrl}', [LoginController::class, 'index']);
-    Route::get('recaptcha/{tmp}', [LoginController::class, 'generateReCaptcha'])->name('recaptcha');
+    // reCAPTCHA route removed
     Route::post('/', [LoginController::class, 'login'])->name('login');
 });
 

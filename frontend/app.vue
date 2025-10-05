@@ -15,3 +15,8 @@ if (process.client) {
   document.documentElement.setAttribute('dir', 'rtl')
 }
 </script>
+<style>
+body {
+  margin: 0;
+}
+</style>

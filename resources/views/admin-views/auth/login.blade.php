@@ -98,7 +98,8 @@
                             </label>
                         </div>
                     </div>
-                    @if(isset($recaptcha) && $recaptcha['status'] == 1)
+                    {{-- CAPTCHA completely disabled --}}
+                    {{-- @if(isset($recaptcha) && $recaptcha['status'] == 1)
                         <div id="recaptcha_element" class="w-100;" data-type="image"></div>
                         <br/>
                     @else
@@ -106,7 +107,7 @@
                             <div class="col-6 pr-0">
                                 <input type="text" class="form-control form-control-lg form-control-focus-none"
                                        id="admin-login-recaptcha-input"
-                                       name="default_captcha_value" value="" required
+                                       name="default_captcha_value" value=""
                                        placeholder="{{ translate('enter_captcha_value') }}">
                             </div>
                             <div class="col-6 input-icons bg-white rounded">
@@ -122,7 +123,7 @@
                                 </a>
                             </div>
                         </div>
-                    @endif
+                    @endif --}}
 
                     <button type="submit" class="btn btn-lg btn-block btn-primary">
                         {{ translate('sign_in') }}

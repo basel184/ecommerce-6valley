@@ -9,7 +9,7 @@ use App\Http\Controllers\BaseController;
 use App\Http\Requests\Admin\LoginRequest;
 use App\Models\Admin;
 use App\Services\AdminService;
-use App\Traits\RecaptchaTrait;
+// use App\Traits\RecaptchaTrait; // Removed
 use Devrabiul\ToastMagic\Facades\ToastMagic;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Session;
 
 class LoginController extends BaseController
 {
-    use RecaptchaTrait;
+    // use RecaptchaTrait; // Removed
 
     public function __construct(private readonly Admin $admin, private readonly AdminService $adminService)
     {
@@ -33,17 +33,7 @@ class LoginController extends BaseController
         return $this->getLoginView(loginUrl: $type);
     }
 
-    public function generateReCaptcha()
-    {
-        $recaptchaBuilder = $this->generateDefaultReCaptcha(4);
-        if (Session::has(SessionKey::ADMIN_RECAPTCHA_KEY)) {
-            Session::forget(SessionKey::ADMIN_RECAPTCHA_KEY);
-        }
-        Session::put(SessionKey::ADMIN_RECAPTCHA_KEY, $recaptchaBuilder->getPhrase());
-        header("Cache-Control: no-cache, must-revalidate");
-        header("Content-Type:image/jpeg");
-        $recaptchaBuilder->output();
-    }
+    // generateReCaptcha function removed
 
     private function getLoginView(string $loginUrl): View
     {
@@ -55,36 +45,36 @@ class LoginController extends BaseController
         $userType = array_search($loginUrl, $loginTypes);
         abort_if(!$userType, 404);
 
-        $recaptchaBuilder = $this->generateDefaultReCaptcha(4);
-        Session::put(SessionKey::ADMIN_RECAPTCHA_KEY, $recaptchaBuilder->getPhrase());
-
-        $recaptcha = getWebConfig(name: 'recaptcha');
+        // reCAPTCHA completely disabled
+        $recaptchaBuilder = null;
+        $recaptcha = ['status' => 0]; // Force disable recaptcha
 
         return view('admin-views.auth.login', compact('recaptchaBuilder', 'recaptcha'))->with(['role' => $userType]);
     }
 
     public function login(LoginRequest $request): RedirectResponse
     {
-        $recaptcha = getWebConfig(name: 'recaptcha');
-        if (isset($recaptcha) && $recaptcha['status'] == 1) {
-            $request->validate([
-                'g-recaptcha-response' => [
-                    function ($attribute, $value, $fail) {
-                        $secretKey = getWebConfig(name: 'recaptcha')['secret_key'];
-                        $response = $value;
-                        $url = 'https://www.google.com/recaptcha/api/siteverify?secret=' . $secretKey . '&response=' . $response;
-                        $response = Http::get($url);
-                        $response = $response->json();
-                        if (!isset($response['success']) || !$response['success']) {
-                            $fail(translate('ReCAPTCHA_Failed'));
-                        }
-                    },
-                ],
-            ]);
-        } else if (strtolower(session(SessionKey::ADMIN_RECAPTCHA_KEY)) != strtolower($request['default_captcha_value'])) {
-            ToastMagic::error(translate('ReCAPTCHA_Failed'));
-            return back();
-        }
+        // CAPTCHA validation completely disabled
+        // $recaptcha = getWebConfig(name: 'recaptcha');
+        // if (isset($recaptcha) && $recaptcha['status'] == 1) {
+        //     $request->validate([
+        //         'g-recaptcha-response' => [
+        //             function ($attribute, $value, $fail) {
+        //                 $secretKey = getWebConfig(name: 'recaptcha')['secret_key'];
+        //                 $response = $value;
+        //                 $url = 'https://www.google.com/recaptcha/api/siteverify?secret=' . $secretKey . '&response=' . $response;
+        //                 $response = Http::get($url);
+        //                 $response = $response->json();
+        //                 if (!isset($response['success']) || !$response['success']) {
+        //                     $fail(translate('ReCAPTCHA_Failed'));
+        //                 }
+        //             },
+        //         ],
+        //     ]);
+        // } else if (strtolower(session(SessionKey::ADMIN_RECAPTCHA_KEY)) != strtolower($request['default_captcha_value'])) {
+        //     ToastMagic::error(translate('ReCAPTCHA_Failed'));
+        //     return back();
+        // }
 
         $admin = $this->admin->where('email', $request['email'])->first();
 

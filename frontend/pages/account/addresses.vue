@@ -2,27 +2,45 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+// Interfaces
+interface Address {
+  id: string
+  address_type: string
+  contact_person_name: string
+  contact_person_number: string
+  phone?: string
+  address: string
+  city: string
+  zip?: string
+  country: string
+  latitude?: string
+  longitude?: string
+  is_billing?: number
+}
+
 const { t } = useI18n()
 const { $get, $post, $put, $del } = useApi()
 
 // Addresses data
-const addresses = ref([])
+const addresses = ref<Address[]>([])
 const loading = ref(false)
 const error = ref('')
 
 // Address form
 const showAddressForm = ref(false)
-const editingAddress = ref(null)
+const editingAddress = ref<Address | null>(null)
 const addressForm = ref({
   address_type: 'home',
   contact_person_name: '',
   contact_person_number: '',
+  phone: '', // Required field
   address: '',
   city: '',
   zip: '',
   country: 'Saudi Arabia',
-  latitude: '',
-  longitude: ''
+  latitude: '24.7136', // Default Riyadh coordinates
+  longitude: '46.6753',
+  is_billing: 1 // Required field (1 for yes, 0 for no)
 })
 
 const formLoading = ref(false)
@@ -51,30 +69,34 @@ const openAddForm = () => {
     address_type: 'home',
     contact_person_name: '',
     contact_person_number: '',
+    phone: '', // Required field
     address: '',
     city: '',
     zip: '',
     country: 'Saudi Arabia',
-    latitude: '',
-    longitude: ''
+    latitude: '24.7136', // Default Riyadh coordinates
+    longitude: '46.6753',
+    is_billing: 1 // Required field (1 for yes, 0 for no)
   }
   formError.value = ''
   showAddressForm.value = true
 }
 
 // Open edit address form
-const openEditForm = (address: any) => {
+const openEditForm = (address: Address) => {
   editingAddress.value = address
   addressForm.value = {
     address_type: address.address_type || 'home',
     contact_person_name: address.contact_person_name || '',
     contact_person_number: address.contact_person_number || '',
+    phone: address.phone || address.contact_person_number || '', // Use phone or fallback to contact_person_number
     address: address.address || '',
     city: address.city || '',
     zip: address.zip || '',
     country: address.country || 'Saudi Arabia',
-    latitude: address.latitude || '',
-    longitude: address.longitude || ''
+    latitude: address.latitude || '24.7136',
+    longitude: address.longitude || '46.6753',
+    is_billing: address.is_billing !== undefined ? address.is_billing : 1
   }
   formError.value = ''
   showAddressForm.value = true
@@ -93,15 +115,33 @@ const submitAddress = async () => {
   formError.value = ''
 
   try {
+    // Prepare form data with required fields - ensure all required fields are present
+    const formData = {
+      address_type: addressForm.value.address_type,
+      contact_person_name: addressForm.value.contact_person_name,
+      contact_person_number: addressForm.value.contact_person_number,
+      address: addressForm.value.address,
+      city: addressForm.value.city,
+      zip: addressForm.value.zip,
+      country: addressForm.value.country,
+      // Required fields with fallbacks - ensure they are not empty
+      phone: addressForm.value.phone || addressForm.value.contact_person_number || '',
+      latitude: addressForm.value.latitude ? String(addressForm.value.latitude) : '24.7136',
+      longitude: addressForm.value.longitude ? String(addressForm.value.longitude) : '46.6753',
+      is_billing: Number(addressForm.value.is_billing) || 1
+    }
+
+    console.log('Sending form data:', formData) // Debug log
+
     if (editingAddress.value) {
       // Update existing address
       await $put('v1/customer/address/update', {
         id: editingAddress.value.id,
-        ...addressForm.value
+        ...formData
       })
     } else {
       // Add new address
-      await $post('v1/customer/address/add', addressForm.value)
+      await $post('v1/customer/address/add', formData)
     }
     
     closeForm()
@@ -120,7 +160,9 @@ const deleteAddress = async (addressId: string) => {
 
   try {
     await $del('v1/customer/address', {
-      id: addressId
+      params: {
+        id: addressId
+      }
     })
     await loadAddresses()
   } catch (err: any) {
@@ -130,7 +172,7 @@ const deleteAddress = async (addressId: string) => {
 
 // Get address type name
 const getAddressTypeName = (type: string) => {
-  const types = {
+  const types: Record<string, string> = {
     home: 'المنزل',
     work: 'العمل',
     other: 'أخرى'
@@ -276,6 +318,18 @@ onMounted(() => {
             </div>
 
             <div class="form-group">
+              <label for="phone">رقم الهاتف (مطلوب)</label>
+              <input
+                id="phone"
+                v-model="addressForm.phone"
+                type="tel"
+                required
+                placeholder="مثال: +966501234567"
+                :disabled="formLoading"
+              />
+            </div>
+
+            <div class="form-group">
               <label for="address">العنوان التفصيلي</label>
               <textarea
                 id="address"
@@ -317,6 +371,39 @@ onMounted(() => {
                 required
                 :disabled="formLoading"
               />
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="latitude">خط العرض</label>
+                <input
+                  id="latitude"
+                  v-model.number="addressForm.latitude"
+                  type="number"
+                  step="any"
+                  placeholder="24.7136"
+                  :disabled="formLoading"
+                />
+              </div>
+              <div class="form-group">
+                <label for="longitude">خط الطول</label>
+                <input
+                  id="longitude"
+                  v-model.number="addressForm.longitude"
+                  type="number"
+                  step="any"
+                  placeholder="46.6753"
+                  :disabled="formLoading"
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="is_billing">نوع العنوان</label>
+              <select id="is_billing" v-model.number="addressForm.is_billing" :disabled="formLoading">
+                <option :value="1">عنوان الفواتير</option>
+                <option :value="0">عنوان الشحن فقط</option>
+              </select>
             </div>
 
             <div v-if="formError" class="error-message">
